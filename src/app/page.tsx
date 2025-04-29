@@ -49,20 +49,18 @@ import { useNostr, useSubscription } from '@lawallet/react';
 import { convertEvent } from '../lib/utils/nostr';
 import { calculateTicketPrice } from '../lib/utils/price';
 import { useRelay } from '@/hooks/useRelay';
-import { GitHubLogo } from '@/components/github';
 
 // Mock data
 const TICKET = {
   title: 'PANCHITOS PARTY',
   subtitle: 'Traete a tu amigo normie a festejar a La Crypta',
-  address: 'Villanueva 1367, CABA',
   date: 'Viernes 17 de Enero - 20:00hs hasta las 02:00hs',
   description: [
     'PANCHOS 🌭',
     'Entretenimiento',
     'Presentaciones',
     'Bitcoiners',
-    '¿No sabes nada de Bitcoin pero te interesa?\n¡VENí!',
+    'No sabes nada de Bitcoin pero te interesa? Vení!',
   ],
   imageUrl: 'https://placehold.co/400',
   value: parseInt(process.env.NEXT_TICKET_PRICE_ARS || '1'), // Updated ticket price
@@ -289,7 +287,7 @@ export default function Page() {
         const discountedPriceSAT = Math.round((TICKET.value) * discountMultiple);
         setTicketPriceSAT(discountedPriceSAT);
 
-        // Calculate total in SAT
+        // Calculate total in ARS
         const totalMiliSats = Math.round(
           await calculateTicketPrice(ticketQuantity, discountedPriceSAT)
         );
@@ -374,8 +372,8 @@ export default function Page() {
                 <Card className="p-4 bg-black bg-opacity-85">
                   <div className="flex flex-col items-center">
                     <CardTitle>{TICKET.title}</CardTitle>
-                    <CardTitle className="text-base mt-2 italic">{TICKET.subtitle} </CardTitle>
-                    <CardTitle className="font-normal text-base mt-2">{TICKET.address}</CardTitle>
+                    <CardTitle className="text-base mt-2">{TICKET.subtitle} </CardTitle>
+                    <CardTitle className="text-sm mt-2">Villanueva 1367, CABA</CardTitle>
                     <CardContent>
                       <div className="mt-2">{TICKET.date}</div>
                       <ul className="list-disc pl-5 mt-4 text-sm">
@@ -400,7 +398,7 @@ export default function Page() {
                                   )}
                                 </span>
                               )}
-                              <p className='text-orange-300'>{ticketPriceSAT} SAT</p>
+                              {ticketPriceSAT} SAT
                             </>
                             {discountMultiple !== 1 && (
                               <span className="font-semibold text-sm text-primary">
@@ -464,7 +462,7 @@ export default function Page() {
                                       {Math.round(totalMiliSats / discountMultiple)}
                                     </span>
                                   )}
-                                  <p className='text-green-300'>{totalMiliSats} {TICKET.valueType}</p>
+                                  {totalMiliSats} {TICKET.valueType}
                                 </>
                               ) : (
                                 'Calculating...'
@@ -660,11 +658,6 @@ export default function Page() {
             )}
           </div>
         </section>
-      </div>
-      <div className={`fixed bottom-2 inset-x-0 flex justify-center lg:justify-end lg:pr-4`}>
-        <a href="https://github.com/lacrypta/checkout-1satoshi1peso">
-          <GitHubLogo />
-        </a>
       </div>
 
       <AlertDialog open={isOpen} onOpenChange={setOpenAlert}>

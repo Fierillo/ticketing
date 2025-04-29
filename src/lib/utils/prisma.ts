@@ -26,7 +26,7 @@ async function createOrder(
   fullname: string,
   email: string,
   ticketQuantity: number,
-  totalMiliSats: number
+  totalMiliSats: number,
 ): Promise<CreateOrderResponse> {
   const eventReferenceId: string = randomBytes(32).toString('hex');
 

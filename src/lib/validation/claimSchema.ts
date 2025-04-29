@@ -1,5 +1,6 @@
 import { Event, validateEvent, verifyEvent } from 'nostr-tools';
 import { z } from 'zod';
+import { senderPublicKey } from '@/lib/utils/nostr';
 // import { claimEventSchema } from './nostrEventSchema';
 
 const tagSchema = z.tuple([z.string(), z.string()]);
@@ -55,7 +56,8 @@ export const orderClaimSchema = z.object({
 });
 
 export function validateZapReceiptEmitter(zapEvent: Event): boolean {
-  if (zapEvent.tags.find((tag) => tag[0] === 'p')![1] !== zapEvent.pubkey) {
+  if (zapEvent.tags.find((tag) => tag[0] === 'p')![1] !== senderPublicKey) {
+    console.log(`pubkey: ${zapEvent.pubkey}, p: ${zapEvent.tags.find((tag) => tag[0] === 'p')![1]}`);
     return false;
   }
 

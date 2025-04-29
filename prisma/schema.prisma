@@ -29,6 +29,7 @@ model Order {
     totalMiliSats    Int
     paid             Boolean @default(false)
     zapReceiptId     String? @unique
+    verifyUrl        String?
 
     // Relations
     userId  String?

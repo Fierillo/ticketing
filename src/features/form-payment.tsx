@@ -16,8 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { decodeInvoice } from '@lawallet/react';
 import { useEffect, useState } from 'react';
-import Loading from '@/components/animations/loading';
+const Loading = dynamic(() => import('../components/animations/loading'), {
+  ssr: false, // Disable server-side rendering
+});
 import { toast } from '@/hooks/use-toast';
+import dynamic from 'next/dynamic';
 
 interface FormPaymentProps {
   invoice?: string;

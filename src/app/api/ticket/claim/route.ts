@@ -9,6 +9,7 @@ import { ses } from '@/services/ses';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPublicKey, validateEvent } from 'nostr-tools';
 import * as Sentry from '@sentry/nextjs';
+import { senderPublicKey } from '@/lib/utils/nostr';
 
 interface OrderClaimResponse {
   claim: boolean;
@@ -45,10 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate zapRequest
-    const publicKey = getPublicKey(
-      Uint8Array.from(Buffer.from(process.env.NEXT_SIGNER_PRIVATE_KEY!, 'hex'))
-    );
-    const isValidZapRequest = validateZapRequest(zapReceipt, publicKey);
+    const isValidZapRequest = validateZapRequest(zapReceipt, senderPublicKey);
     if (!isValidZapRequest) {
       throw new AppError('Invalid zapRequest', 403);
     }
