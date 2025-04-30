@@ -50,22 +50,8 @@ import { convertEvent } from '../lib/utils/nostr';
 import { calculateTicketPrice } from '../lib/utils/price';
 import { useRelay } from '@/hooks/useRelay';
 
-// Hardcode ENV
-const TICKET_TYPE_GENERAL = process.env.NEXT_TICKET_TYPE === 'general';
-
 // Mock data
-const EVENT = {
-  title: 'Bitcoin Pizza Day',
-  description: 'Conectá con la Comunidad Bitcoiner',
-  date: 'Viernes 23 de Enero - 19:00hs hasta las 02:00hs',
-  imageUrl: '',
-};
-
-const TICKET = {
-  title: TICKET_TYPE_GENERAL ? 'Entrada General' : 'Entrada Premium',
-  value: TICKET_TYPE_GENERAL ? 14.99 : 39.99, // Updated ticket price
-  currency: 'USD',
-};
+import { EVENT, TICKET } from '@/config/mock';
 
 const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
 
@@ -280,26 +266,26 @@ export default function Page() {
   ]);
 
   // Update ticket price calculations
-  useEffect(() => {
-    const calculatePrices = async () => {
-      try {
-        // Calculate discounted price in SAT
-        const discountedPriceSAT = Math.round(TICKET.value * discountMultiple);
-        setTicketPriceSAT(discountedPriceSAT);
+  // useEffect(() => {
+  //   const calculatePrices = async () => {
+  //     try {
+  //       // Calculate discounted price in SAT
+  //       const discountedPriceSAT = Math.round(TICKET.value * discountMultiple);
+  //       setTicketPriceSAT(discountedPriceSAT);
 
-        // Calculate total in ARS
-        const totalMiliSats = Math.round(
-          await calculateTicketPrice(ticketQuantity, discountedPriceSAT)
-        );
+  //       // Calculate total in ARS
+  //       const totalMiliSats = Math.round(
+  //         await calculateTicketPrice(ticketQuantity, discountedPriceSAT)
+  //       );
 
-        setTotalMiliSats(totalMiliSats);
-      } catch (error: any) {
-        console.error('Error calculating ticket prices:', error);
-      }
-    };
+  //       setTotalMiliSats(totalMiliSats);
+  //     } catch (error: any) {
+  //       console.error('Error calculating ticket prices:', error);
+  //     }
+  //   };
 
-    calculatePrices();
-  }, [ticketQuantity, discountMultiple]);
+  //   calculatePrices();
+  // }, [ticketQuantity, discountMultiple]);
 
   // Change screen when payment is confirmed
   useEffect(() => {
@@ -395,26 +381,10 @@ export default function Page() {
                         <div>
                           <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
-                            <>
-                              {discountMultiple !== 1 && (
-                                <span className="line-through mr-2 text-text">
-                                  {Math.round(
-                                    ticketPriceSAT / discountMultiple
-                                  )}
-                                </span>
-                              )}
-                              {ticketPriceSAT} {TICKET?.currency}
-                            </>
-                            {discountMultiple !== 1 && (
-                              <span className="font-semibold text-sm text-primary">
-                                {' '}
-                                {((1 - discountMultiple) * 100).toFixed(0)}
-                                {'% OFF'}
-                              </span>
-                            )}
+                            {TICKET?.value} {TICKET?.currency}
                           </p>
                         </div>
-                        {TICKET_TYPE_GENERAL && (
+                        {TICKET?.type === 'general' && (
                           <div className="flex gap-2 items-center">
                             <Button
                               variant={
@@ -456,31 +426,29 @@ export default function Page() {
                         )}
                       </div>
                     </Card>
-                    {/* <Card>
-                      <div className="p-4">
-                        <div className="flex gap-4 justify-between items-center">
-                          <p className="text-text">Total</p>
-                          <div className="text-right">
-                            <p className="font-bold text-md">
-                              {totalMiliSats ? (
-                                <>
-                                  {discountMultiple !== 1 && (
-                                    <span className="line-through mr-2 text-text">
-                                      {Math.round(
-                                        totalMiliSats / discountMultiple
-                                      )}
-                                    </span>
-                                  )}
-                                  {totalMiliSats} {TICKET.currency}
-                                </>
-                              ) : (
-                                'Calculating...'
-                              )}
+                    <div className="p-4">
+                      <div className="flex gap-4 justify-between items-center">
+                        <p className="text-text">Total</p>
+                        <div className="text-right">
+                          <p className="font-bold text-md">
+                            {discountMultiple === 1
+                              ? TICKET?.value * ticketQuantity
+                              : Math.round(
+                                  TICKET?.value *
+                                    ticketQuantity *
+                                    discountMultiple
+                                )}
+                            {TICKET.currency}
+                          </p>
+                          {discountMultiple !== 1 && (
+                            <p className="font-semibold text-sm text-primary">
+                              {((1 - discountMultiple) * 100).toFixed(0)}
+                              {'% OFF'}
                             </p>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    </Card> */}
+                    </div>
                   </>
                 )}
               </>
@@ -495,11 +463,6 @@ export default function Page() {
                     <AccordionTrigger className="flex gap-2 no-underline">
                       <div className="flex items-center justify-between gap-2 w-full">
                         Show order summary
-                        <p className="font-bold text-lg no-underline">
-                          {totalMiliSats
-                            ? totalMiliSats + ' ' + TICKET.currency
-                            : 'Calculating...'}
-                        </p>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
@@ -508,7 +471,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {ticketPriceSAT} SAT
+                              {ticketPriceSAT} {TICKET?.currency}
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -524,12 +487,23 @@ export default function Page() {
                       <div className="p-4">
                         <div className="flex gap-4 justify-between items-center">
                           <p className="text-text text-md">Total</p>
-                          <div className="text-right">
+                          <div className="flex flex-col text-right">
                             <p className="font-bold text-md">
-                              {totalMiliSats
-                                ? `${totalMiliSats} ${TICKET.currency}`
-                                : 'Calculating...'}
+                              {discountMultiple === 1
+                                ? TICKET?.value * ticketQuantity
+                                : Math.round(
+                                    TICKET?.value *
+                                      ticketQuantity *
+                                      discountMultiple
+                                  )}{' '}
+                              {TICKET.currency}
                             </p>
+                            {discountMultiple !== 1 && (
+                              <p className="font-semibold text-sm text-primary">
+                                {((1 - discountMultiple) * 100).toFixed(0)}
+                                {'% OFF'}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -543,14 +517,7 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {ticketPriceSAT} SAT
-                          {discountMultiple !== 1 && (
-                            <span className="font-semibold text-sm text-primary">
-                              {' '}
-                              {((1 - discountMultiple) * 100).toFixed(0)}
-                              {'% OFF'}
-                            </span>
-                          )}
+                          {TICKET?.value} {TICKET?.currency}
                         </p>
                       </div>
                       <div className="flex gap-2 items-center">
@@ -561,25 +528,29 @@ export default function Page() {
                       </div>
                     </div>
                   </Card>
-                  <Card className="bg-background">
-                    <div className="p-4">
-                      <div className="flex gap-4 justify-between items-center">
-                        <p className="text-text">Total</p>
-                        <div className="text-right">
-                          <p className="font-bold text-md">
-                            <>
-                              {discountMultiple !== 1 && (
-                                <span className="line-through mr-2 text-text">
-                                  {Math.round(totalMiliSats / discountMultiple)}
-                                </span>
-                              )}
-                              {totalMiliSats} {TICKET.currency}
-                            </>
+                  <div className="p-4">
+                    <div className="flex gap-4 justify-between items-center">
+                      <p className="text-text">Total</p>
+                      <div className="text-right">
+                        <p className="font-bold text-md">
+                          {discountMultiple === 1
+                            ? TICKET?.value * ticketQuantity
+                            : Math.round(
+                                TICKET?.value *
+                                  ticketQuantity *
+                                  discountMultiple
+                              )}{' '}
+                          {TICKET.currency}
+                        </p>
+                        {discountMultiple !== 1 && (
+                          <p className="font-semibold text-sm text-primary">
+                            {((1 - discountMultiple) * 100).toFixed(0)}
+                            {'% OFF'}
                           </p>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  </Card>
+                  </div>
                 </div>
               </>
             )}
