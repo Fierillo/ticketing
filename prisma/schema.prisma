@@ -43,6 +43,7 @@ model Ticket {
     id       String  @id @default(uuid())
     ticketId String? @unique // for check in
     checkIn  Boolean @default(false)
+    type     String 
 
     // Relations
     userId  String
