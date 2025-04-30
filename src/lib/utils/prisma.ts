@@ -26,7 +26,7 @@ async function createOrder(
   fullname: string,
   email: string,
   ticketQuantity: number,
-  totalMiliSats: number,
+  totalMiliSats: number
 ): Promise<CreateOrderResponse> {
   const eventReferenceId: string = randomBytes(32).toString('hex');
 
@@ -125,6 +125,7 @@ async function updatePaidOrder(
             ticketId,
             userId: order.userId,
             orderId: order.id,
+            type: process.env.TICKET_TYPE,
           },
         });
 
@@ -231,6 +232,7 @@ async function createInvite(
             ticketId,
             userId: user.id,
             orderId: null,
+            type: process.env.TICKET_TYPE,
           },
         });
 
