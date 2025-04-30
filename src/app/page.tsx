@@ -384,7 +384,7 @@ export default function Page() {
           <div className="flex flex-col gap-2 w-full max-w-[520px] p-4">
             {screen === 'information' ? (
               <>
-                <Card className="p-4">
+                <div className="p-4">
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-col">
                       <h1 className="text-2xl font-semibold leading-none tracking-tight">
@@ -399,7 +399,7 @@ export default function Page() {
                       <p>{EVENT.date}</p>
                     </div>
                   </div>
-                </Card>
+                </div>
                 <RadioGroup defaultValue={ticketSelected as string}>
                   {EVENT?.tickets?.map((ticket) => (
                     <>
