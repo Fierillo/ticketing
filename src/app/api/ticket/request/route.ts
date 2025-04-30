@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = requestOrderSchema.safeParse(body);
     if (!parsed.success) throw new AppError(parsed.error.errors[0].message, 400);
-    const { fullname, email, ticketQuantity, newsletter, code } = parsed.data;
+    const { fullname, email, ticketQuantity, newsletter, code, ticketId } = parsed.data;
+
+    // TO-DO: 
+    // Validate for ticketID
 
     // 3. Fetch discount & LNURLP concurrently
     const [discount, lnurlp] = await Promise.all([
