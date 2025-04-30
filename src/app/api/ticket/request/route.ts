@@ -17,7 +17,7 @@ import { prisma } from "@/services/prismaClient";
 
 let apiUrl = process.env.NEXT_PUBLIC_API_URL
 let walias = process.env.NEXT_POS_WALIAS
-let priceEnv = process.env.NEXT_TICKET_PRICE_ARS
+let priceEnv = process.env.NEXT_TICKET_PRICE
 let listId = process.env.NEXT_SENDY_LIST_ID
 
 export async function POST(req: NextRequest) {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         ? "NEXT_PUBLIC_API_URL"
         : !walias
         ? "NEXT_POS_WALIAS"
-        : "NEXT_TICKET_PRICE_ARS";
+        : "NEXT_TICKET_PRICE";
       throw new AppError(`${missing} is not defined`, 500);
     }
 

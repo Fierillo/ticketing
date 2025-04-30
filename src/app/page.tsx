@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Event } from 'nostr-tools';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Navbar } from '@/components/navbar';
 import {
@@ -47,8 +47,10 @@ import useCode from '@/hooks/useCode';
 import useOrder from '@/hooks/useOrder';
 import { useNostr, useSubscription } from '@lawallet/react';
 import { convertEvent } from '../lib/utils/nostr';
-import { calculateTicketPrice } from '../lib/utils/price';
+import { calculateTicketPrice, convertCurrencyToSats } from '../lib/utils/price';
 import { useRelay } from '@/hooks/useRelay';
+import { blockPrice } from '@/lib/utils/blockPrice';
+import { countTotalTickets } from '@/lib/utils/prisma';
 
 // Mock data
 const TICKET = {
@@ -63,13 +65,16 @@ const TICKET = {
     'No sabes nada de Bitcoin pero te interesa? Vení!',
   ],
   imageUrl: 'https://placehold.co/400',
-  value: parseInt(process.env.NEXT_TICKET_PRICE_ARS || '1'), // Updated ticket price
-  valueType: 'ARS',
+  value: parseInt(process.env.NEXT_TICKET_PRICE || '1'), // Updated ticket price
+  valueType: 'USD',
 };
 
 const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
 
 export default function Page() {
+  // Block Price
+  const [blockBatch, setBlockBatch] = useState<number>(0);
+  const [totalTicketsSold, setTotalTicketsSold] = useState<number>(0);
   // Flow
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -80,8 +85,8 @@ export default function Page() {
   const [userData, setUserData] = useState<OrderUserData | undefined>(
     undefined
   );
-  const [totalMiliSats, setTotalMiliSats] = useState<number>(0);
-  const [ticketPriceSAT, setTicketPriceSAT] = useState<number>(TICKET.value);
+  const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [ticketPrice, setTicketPrice] = useState<number>(TICKET.value);
   const [ticketQuantity, setTicketQuantity] = useState<number>(1); // Set initial ticket quantity to 1
   const [paymentRequest, setPaymentRequest] = useState<string | undefined>(
     undefined
@@ -279,27 +284,45 @@ export default function Page() {
     validateRelaysStatus,
   ]);
 
+  // Fetch block price
+  useEffect(() => {
+    const fetchBlockPrice = async () => {
+      try {
+        const { totalSold, blockValue } = await blockPrice();
+        setBlockBatch(blockValue);
+        setTotalTicketsSold(totalSold);
+        // debug
+        console.log('totalSold:', totalSold);
+        console.log('blockValue:', blockValue);
+      } catch (error: any) {
+        console.error('Error fetching block price:', error);
+      }
+    };
+
+    fetchBlockPrice();
+  }, []);
+
   // Update ticket price calculations
   useEffect(() => {
     const calculatePrices = async () => {
       try {
-        // Calculate discounted price in SAT
-        const discountedPriceSAT = Math.round((TICKET.value) * discountMultiple);
-        setTicketPriceSAT(discountedPriceSAT);
-
-        // Calculate total in ARS
-        const totalMiliSats = Math.round(
-          await calculateTicketPrice(ticketQuantity, discountedPriceSAT)
-        );
-
-        setTotalMiliSats(totalMiliSats);
-      } catch (error: any) {
-        console.error('Error calculating ticket prices:', error);
+        // 1) Precio base + bloque de descuento, en USD
+        const ticketPrice = (TICKET.value + blockBatch * 10) * discountMultiple
+        setTicketPrice(ticketPrice)
+  
+        // 2) Convertir USD → sats
+        const satsPerTicket = await convertCurrencyToSats(ticketPrice, 'USD')
+  
+        // 3) Total sats según cantidad
+        const totalSats = satsPerTicket * ticketQuantity
+        setTotalPrice(totalSats)
+      } catch (err: any) {
+        console.error('Error calculando precios:', err)
       }
-    };
-
-    calculatePrices();
-  }, [ticketQuantity, discountMultiple]);
+    }
+  
+    calculatePrices()
+  }, [ticketQuantity, discountMultiple, blockBatch])
 
   // Change screen when payment is confirmed
   useEffect(() => {
@@ -328,7 +351,9 @@ export default function Page() {
 
         if (response.ok) {
           if (data.data.totalTickets >= MAX_TICKETS) {
+            setTotalTicketsSold(data.data.totalTickets);
             setMaxTicketsReached(true);
+            console.log('Ticket solds:', totalTicketsSold);
           }
         } else {
           console.error('Failed to fetch total tickets:', data.error);
@@ -394,11 +419,11 @@ export default function Page() {
                               {discountMultiple !== 1 && (
                                 <span className="line-through mr-2 text-text">
                                   {Math.round(
-                                    ticketPriceSAT / discountMultiple
+                                    ticketPrice
                                   )}
                                 </span>
                               )}
-                              {ticketPriceSAT} SAT
+                              {ticketPrice} USD
                             </>
                             {discountMultiple !== 1 && (
                               <span className="font-semibold text-sm text-primary">
@@ -455,14 +480,14 @@ export default function Page() {
                           <p className="text-text">Total</p>
                           <div className="text-right">
                             <p className="font-bold text-md">
-                              {totalMiliSats ? (
+                              {totalPrice ? (
                                 <>
                                   {discountMultiple !== 1 && (
                                     <span className="line-through mr-2 text-text">
-                                      {Math.round(totalMiliSats / discountMultiple)}
+                                      {Math.round(totalPrice / discountMultiple)}
                                     </span>
                                   )}
-                                  {totalMiliSats} {TICKET.valueType}
+                                  {totalPrice} SAT
                                 </>
                               ) : (
                                 'Calculating...'
@@ -487,8 +512,8 @@ export default function Page() {
                       <div className="flex items-center justify-between gap-2 w-full">
                         Show order summary
                         <p className="font-bold text-lg no-underline">
-                          {totalMiliSats
-                            ? totalMiliSats + ' ' + TICKET.valueType
+                          {totalPrice
+                            ? totalPrice + ' ' + TICKET.valueType
                             : 'Calculating...'}
                         </p>
                       </div>
@@ -499,7 +524,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {ticketPriceSAT} SAT
+                              {ticketPrice} SAT
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -517,8 +542,8 @@ export default function Page() {
                           <p className="text-text text-md">Total</p>
                           <div className="text-right">
                             <p className="font-bold text-md">
-                              {totalMiliSats
-                                ? `${totalMiliSats} ${TICKET.valueType}`
+                              {totalPrice
+                                ? `${totalPrice} ${TICKET.valueType}`
                                 : 'Calculating...'}
                             </p>
                           </div>
@@ -534,7 +559,7 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {ticketPriceSAT} SAT
+                          {ticketPrice} SAT
                           {discountMultiple !== 1 && (
                             <span className="font-semibold text-sm text-primary">
                               {' '}
@@ -561,10 +586,10 @@ export default function Page() {
                             <>
                               {discountMultiple !== 1 && (
                                 <span className="line-through mr-2 text-text">
-                                  {Math.round(totalMiliSats / discountMultiple)}
+                                  {Math.round(totalPrice / discountMultiple)}
                                 </span>
                               )}
-                              {totalMiliSats} {TICKET.valueType}
+                              {totalPrice} {TICKET.valueType}
                             </>
                           </p>
                         </div>
