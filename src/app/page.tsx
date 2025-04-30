@@ -57,14 +57,14 @@ const TICKET_TYPE_GENERAL = process.env.NEXT_TICKET_TYPE === 'general';
 const EVENT = {
   title: 'Bitcoin Pizza Day',
   description: 'Conectá con la Comunidad Bitcoiner',
-  date: 'Viernes 17 de Enero - 20:00hs hasta las 02:00hs',
+  date: 'Viernes 23 de Enero - 19:00hs hasta las 02:00hs',
   imageUrl: '',
 };
 
 const TICKET = {
   title: TICKET_TYPE_GENERAL ? 'Entrada General' : 'Entrada Premium',
   value: TICKET_TYPE_GENERAL ? 14.99 : 39.99, // Updated ticket price
-  valueType: 'USD',
+  currency: 'USD',
 };
 
 const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
@@ -403,7 +403,7 @@ export default function Page() {
                                   )}
                                 </span>
                               )}
-                              {ticketPriceSAT} SAT
+                              {ticketPriceSAT} {TICKET?.currency}
                             </>
                             {discountMultiple !== 1 && (
                               <span className="font-semibold text-sm text-primary">
@@ -414,47 +414,49 @@ export default function Page() {
                             )}
                           </p>
                         </div>
-                        <div className="flex gap-2 items-center">
-                          <Button
-                            variant={
-                              screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
-                                ? 'ghost'
-                                : 'secondary'
-                            }
-                            size="icon"
-                            onClick={() =>
-                              setTicketQuantity(ticketQuantity - 1)
-                            }
-                            disabled={
-                              screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
-                            }
-                          >
-                            <MinusIcon />
-                          </Button>
-                          <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
-                            {screen !== 'information' && (
-                              <span className="font-normal text-xs text-text">
-                                x
-                              </span>
-                            )}
-                            {ticketQuantity}
-                          </p>
-                          <Button
-                            variant={
-                              screen !== 'information' ? 'ghost' : 'secondary'
-                            }
-                            size="icon"
-                            onClick={() =>
-                              setTicketQuantity(ticketQuantity + 1)
-                            }
-                            disabled={screen !== 'information'}
-                          >
-                            <PlusIcon />
-                          </Button>
-                        </div>
+                        {TICKET_TYPE_GENERAL && (
+                          <div className="flex gap-2 items-center">
+                            <Button
+                              variant={
+                                screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
+                                  ? 'ghost'
+                                  : 'secondary'
+                              }
+                              size="icon"
+                              onClick={() =>
+                                setTicketQuantity(ticketQuantity - 1)
+                              }
+                              disabled={
+                                screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
+                              }
+                            >
+                              <MinusIcon />
+                            </Button>
+                            <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
+                              {screen !== 'information' && (
+                                <span className="font-normal text-xs text-text">
+                                  x
+                                </span>
+                              )}
+                              {ticketQuantity}
+                            </p>
+                            <Button
+                              variant={
+                                screen !== 'information' ? 'ghost' : 'secondary'
+                              }
+                              size="icon"
+                              onClick={() =>
+                                setTicketQuantity(ticketQuantity + 1)
+                              }
+                              disabled={screen !== 'information'}
+                            >
+                              <PlusIcon />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </Card>
-                    <Card>
+                    {/* <Card>
                       <div className="p-4">
                         <div className="flex gap-4 justify-between items-center">
                           <p className="text-text">Total</p>
@@ -469,7 +471,7 @@ export default function Page() {
                                       )}
                                     </span>
                                   )}
-                                  {totalMiliSats} {TICKET.valueType}
+                                  {totalMiliSats} {TICKET.currency}
                                 </>
                               ) : (
                                 'Calculating...'
@@ -478,7 +480,7 @@ export default function Page() {
                           </div>
                         </div>
                       </div>
-                    </Card>
+                    </Card> */}
                   </>
                 )}
               </>
@@ -495,7 +497,7 @@ export default function Page() {
                         Show order summary
                         <p className="font-bold text-lg no-underline">
                           {totalMiliSats
-                            ? totalMiliSats + ' ' + TICKET.valueType
+                            ? totalMiliSats + ' ' + TICKET.currency
                             : 'Calculating...'}
                         </p>
                       </div>
@@ -525,7 +527,7 @@ export default function Page() {
                           <div className="text-right">
                             <p className="font-bold text-md">
                               {totalMiliSats
-                                ? `${totalMiliSats} ${TICKET.valueType}`
+                                ? `${totalMiliSats} ${TICKET.currency}`
                                 : 'Calculating...'}
                             </p>
                           </div>
@@ -571,7 +573,7 @@ export default function Page() {
                                   {Math.round(totalMiliSats / discountMultiple)}
                                 </span>
                               )}
-                              {totalMiliSats} {TICKET.valueType}
+                              {totalMiliSats} {TICKET.currency}
                             </>
                           </p>
                         </div>
