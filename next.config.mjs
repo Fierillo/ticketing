@@ -15,6 +15,7 @@ const nextConfig = {
     NEXT_AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     NEXT_DISCOUNT_CODES: process.env.DISCOUNT_CODES,
     NEXT_MAX_TICKETS: process.env.MAX_TICKETS,
+    NEXT_TICKET_TYPE: process.env.TICKET_TYPE,
   },
   images: {
     remotePatterns: [
