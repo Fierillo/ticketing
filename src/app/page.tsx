@@ -42,6 +42,8 @@ import { CreditCardValidationIcon } from '@/components/icons/CreditCardValidatio
 import { MinusIcon } from '@/components/icons/MinusIcon';
 import { PlusIcon } from '@/components/icons/PlusIcon';
 import { SleepingIcon } from '@/components/icons/SleepingIcon';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 import useCode from '@/hooks/useCode';
 import useOrder from '@/hooks/useOrder';
@@ -51,10 +53,10 @@ import { calculateTicketPrice } from '../lib/utils/price';
 import { useRelay } from '@/hooks/useRelay';
 
 // Mock data
-const TICKET = {
-  title: 'PANCHITOS PARTY',
-  subtitle: 'Traete a tu amigo normie a festejar a La Crypta',
-  date: 'Viernes 17 de Enero - 20:00hs hasta las 02:00hs',
+const EVENT = {
+  title: 'Bitcoin Pizza Day',
+  subtitle: 'Conectá con la Comunidad Bitcoiner',
+  date: '23 de Mayo - 19:00 hs',
   description: [
     'PANCHOS 🌭',
     'Entretenimiento',
@@ -65,6 +67,20 @@ const TICKET = {
   imageUrl: 'https://placehold.co/400',
   value: parseInt(process.env.NEXT_TICKET_PRICE_ARS || '1'), // Updated ticket price
   valueType: 'ARS',
+  tickets: [
+    {
+      id: 'entrada-base',
+      title: 'Entrada Base',
+      amount: 14.99,
+      currency: 'USD',
+    },
+    {
+      id: 'entrada-premium',
+      title: 'Entrada Premium',
+      amount: 39.99,
+      currency: 'USD',
+    },
+  ],
 };
 
 const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
@@ -81,7 +97,7 @@ export default function Page() {
     undefined
   );
   const [totalMiliSats, setTotalMiliSats] = useState<number>(0);
-  const [ticketPriceSAT, setTicketPriceSAT] = useState<number>(TICKET.value);
+  const [ticketPriceSAT, setTicketPriceSAT] = useState<number>(EVENT.value);
   const [ticketQuantity, setTicketQuantity] = useState<number>(1); // Set initial ticket quantity to 1
   const [paymentRequest, setPaymentRequest] = useState<string | undefined>(
     undefined
@@ -91,6 +107,9 @@ export default function Page() {
   );
   const [verifyUrl, setVerifyUrl] = useState<string | undefined>(undefined);
   const [maxTicketsReached, setMaxTicketsReached] = useState<boolean>(false);
+
+  // New ticket type
+  const [ticketSelected, setTicketSelected] = useState<string | null>(null);
 
   // Hooks
   const { isPaid, requestNewOrder, claimOrderPayment, clear } = useOrder();
@@ -136,6 +155,7 @@ export default function Page() {
           ...data,
           ticketQuantity,
           code,
+          ticketId: ticketSelected as string,
         });
 
         // validateRelaysStatus();
@@ -284,7 +304,7 @@ export default function Page() {
     const calculatePrices = async () => {
       try {
         // Calculate discounted price in SAT
-        const discountedPriceSAT = Math.round((TICKET.value) * discountMultiple);
+        const discountedPriceSAT = Math.round(EVENT.value * discountMultiple);
         setTicketPriceSAT(discountedPriceSAT);
 
         // Calculate total in ARS
@@ -371,20 +391,52 @@ export default function Page() {
               <>
                 <Card className="p-4 bg-black bg-opacity-85">
                   <div className="flex flex-col items-center">
-                    <CardTitle>{TICKET.title}</CardTitle>
-                    <CardTitle className="text-base mt-2">{TICKET.subtitle} </CardTitle>
-                    <CardTitle className="text-sm mt-2">Villanueva 1367, CABA</CardTitle>
+                    <CardTitle>{EVENT.title}</CardTitle>
+                    <CardTitle className="text-base mt-2">
+                      {EVENT.subtitle}
+                    </CardTitle>
+                    <CardTitle className="text-sm mt-2">
+                      Villanueva 1367, CABA
+                    </CardTitle>
                     <CardContent>
-                      <div className="mt-2">{TICKET.date}</div>
-                      <ul className="list-disc pl-5 mt-4 text-sm">
-                        {TICKET.description.map((item, index) => (
+                      <div className="mt-2">{EVENT.date}</div>
+                      {/* <ul className="list-disc pl-5 mt-4 text-sm">
+                        {EVENT.description.map((item, index) => (
                           <li key={index}>{item}</li>
                         ))}
-                      </ul>
+                      </ul> */}
                     </CardContent>
                   </div>
                 </Card>
-                {!maxTicketsReached && (
+                <RadioGroup defaultValue={ticketSelected as string}>
+                  {EVENT?.tickets?.map((ticket) => (
+                    <>
+                      <Label htmlFor={ticket?.title}>
+                        <Card
+                          className="flex justify-between p-4 bg-black bg-opacity-85 mt-4 cursor-pointer"
+                          onClick={() => setTicketSelected(ticket?.id)}
+                        >
+                          <div className="flex justify-between items-center gap-4">
+                            <div>
+                              {ticket?.title}
+                              <p className="font-semibold text-lg">
+                                {ticket?.amount} {ticket?.currency}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-1">
+                            <RadioGroupItem
+                              value={ticket?.title}
+                              id={ticket?.title}
+                            />
+                          </div>
+                        </Card>
+                      </Label>
+                    </>
+                  ))}
+                </RadioGroup>
+                {/* {!maxTicketsReached && (
                   <>
                     <Card className="p-4 bg-black bg-opacity-85 mt-4">
                       <div className="flex justify-between items-center gap-4">
@@ -459,10 +511,12 @@ export default function Page() {
                                 <>
                                   {discountMultiple !== 1 && (
                                     <span className="line-through mr-2 text-text">
-                                      {Math.round(totalMiliSats / discountMultiple)}
+                                      {Math.round(
+                                        totalMiliSats / discountMultiple
+                                      )}
                                     </span>
                                   )}
-                                  {totalMiliSats} {TICKET.valueType}
+                                  {totalMiliSats} {EVENT.valueType}
                                 </>
                               ) : (
                                 'Calculating...'
@@ -473,7 +527,7 @@ export default function Page() {
                       </div>
                     </Card>
                   </>
-                )}
+                )} */}
               </>
             ) : (
               <>
@@ -488,7 +542,7 @@ export default function Page() {
                         Show order summary
                         <p className="font-bold text-lg no-underline">
                           {totalMiliSats
-                            ? totalMiliSats + ' ' + TICKET.valueType
+                            ? totalMiliSats + ' ' + EVENT.valueType
                             : 'Calculating...'}
                         </p>
                       </div>
@@ -497,7 +551,7 @@ export default function Page() {
                       <Card className="p-4 bg-background">
                         <div className="flex justify-between items-center gap-4">
                           <div>
-                            <h2 className="text-md">{TICKET.title}</h2>
+                            <h2 className="text-md">{EVENT.title}</h2>
                             <p className="font-semibold text-lg">
                               {ticketPriceSAT} SAT
                             </p>
@@ -518,7 +572,7 @@ export default function Page() {
                           <div className="text-right">
                             <p className="font-bold text-md">
                               {totalMiliSats
-                                ? `${totalMiliSats} ${TICKET.valueType}`
+                                ? `${totalMiliSats} ${EVENT.valueType}`
                                 : 'Calculating...'}
                             </p>
                           </div>
@@ -532,7 +586,7 @@ export default function Page() {
                   <Card className="p-4 bg-background">
                     <div className="flex justify-between items-center gap-4">
                       <div>
-                        <h2 className="text-md">{TICKET.title}</h2>
+                        <h2 className="text-md">{EVENT.title}</h2>
                         <p className="font-semibold text-lg">
                           {ticketPriceSAT} SAT
                           {discountMultiple !== 1 && (
@@ -564,7 +618,7 @@ export default function Page() {
                                   {Math.round(totalMiliSats / discountMultiple)}
                                 </span>
                               )}
-                              {totalMiliSats} {TICKET.valueType}
+                              {totalMiliSats} {EVENT.valueType}
                             </>
                           </p>
                         </div>
