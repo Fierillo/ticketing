@@ -52,10 +52,15 @@ import { useRelay } from '@/hooks/useRelay';
 
 // Mock data
 import { EVENT, TICKET } from '@/config/mock';
+import { blockPrice } from '@/lib/utils/blockPrice';
+import { BlockBar } from '@/components/ui/block-bar';
 
 const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
 
 export default function Page() {
+  // Block Price
+  const [blockBatch, setBlockBatch] = useState<number>(0);
+  const [totalTicketsSold, setTotalTicketsSold] = useState<number>(0);
   // Flow
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -294,6 +299,24 @@ export default function Page() {
     }
   }, [isPaid]);
 
+  // Fetch block price
+  useEffect(() => {
+    const fetchBlockPrice = async () => {
+      try {
+        const { totalSold, blockValue } = await blockPrice();
+        setBlockBatch(blockValue);
+        setTotalTicketsSold(totalSold);
+        // debug
+        console.log('totalSold:', totalSold);
+        console.log('blockValue:', blockValue);
+      } catch (error: any) {
+        console.error('Error fetching block price:', error);
+      }
+    };
+
+    fetchBlockPrice();
+  }, []);
+
   // Check total tickets in the database on component mount
   useEffect(() => {
     const checkTickets = async () => {
@@ -377,6 +400,9 @@ export default function Page() {
                 {!maxTicketsReached && (
                   <>
                     <Card className="p-4 mt-4">
+                      <div className="flex justify-between items-center gap-4 mb-4">
+                        <BlockBar totalSquares={10} filled={blockBatch} />
+                      </div>
                       <div className="flex justify-between items-center gap-4">
                         <div>
                           <p>{TICKET?.title}</p>
