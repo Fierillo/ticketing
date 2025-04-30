@@ -70,7 +70,6 @@ export async function POST(req: NextRequest) {
         }
       })(),
     ]);
-
     const eventReferenceId = orderResp.eventReferenceId;
 
     // 6. Generate zap request
