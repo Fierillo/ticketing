@@ -57,7 +57,6 @@ export const orderClaimSchema = z.object({
 
 export function validateZapReceiptEmitter(zapEvent: Event): boolean {
   if (zapEvent.tags.find((tag) => tag[0] === 'p')![1] !== senderPublicKey) {
-    console.log(`pubkey: ${zapEvent.pubkey}, p: ${zapEvent.tags.find((tag) => tag[0] === 'p')![1]}`);
     return false;
   }
 

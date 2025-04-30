@@ -82,8 +82,7 @@ async function setupPaymentListener(
     ],
     {
       onevent: async (event: Event) => {
-        console.log('Payment confirmed:', event);
-
+        
         try {
           const claimResponse = await fetch(`${apiUrl}/api/ticket/claim`, {
             method: 'POST',
