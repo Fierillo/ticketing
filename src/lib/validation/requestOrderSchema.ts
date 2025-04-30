@@ -10,4 +10,5 @@ export const requestOrderSchema = z.object({
     .positive({ message: 'Ticket Quantity must be a number' }),
   newsletter: z.boolean({ message: 'Newsletter must be a boolean' }),
   code: z.string().optional(),
+  ticketId: z.string().min(1, { message: 'Ticket ID is required' }),
 });
