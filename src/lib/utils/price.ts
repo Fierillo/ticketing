@@ -52,6 +52,7 @@
 import axios from 'axios';
 
 const urlYadio = 'https://api.yadio.io/exrates/ARS';
+
 let lastFetchTime: number | null = null;
 let cachedBtcPrice: number | null = null;
 const FETCH_INTERVAL = 60 * 1000;
@@ -93,4 +94,17 @@ async function calculateTicketPrice(
   return qty * ticketPriceArs;
 }
 
-export { calculateTicketPrice, convertSatsToArs };
+async function calculateCurrencyToSats(
+  currency: string,
+  amount: number
+): Promise<number> {
+  const YADIO_API_URL = `https://api.yadio.io/rate/${currency}/BTC`;
+  const response = await fetch(YADIO_API_URL);
+  const data = await response.json();
+  const rate = (data?.rate).toFixed(0);
+
+  const value = ((amount * 100000000) / rate).toFixed(0);
+  return Number(value);
+}
+
+export { calculateTicketPrice, convertSatsToArs, calculateCurrencyToSats };
