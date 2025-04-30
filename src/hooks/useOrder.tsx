@@ -10,7 +10,14 @@ import { set } from 'zod';
 
 interface UseOrderReturn {
   isPaid: boolean;
-  requestNewOrder: (data: OrderRequestData) => Promise<OrderRequestReturn>;
+  requestNewOrder: (data: {
+    fullname: string;
+    email: string;
+    newsletter?: boolean;
+    code?: string;
+    ticketQuantity: number;
+    ticketId: string;
+  }) => Promise<OrderRequestReturn>;
   claimOrderPayment: (
     data: OrderUserData,
     zapReceiptEvent: Event
