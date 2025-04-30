@@ -50,21 +50,21 @@ import { convertEvent } from '../lib/utils/nostr';
 import { calculateTicketPrice } from '../lib/utils/price';
 import { useRelay } from '@/hooks/useRelay';
 
+// Hardcode ENV
+const TICKET_TYPE_GENERAL = process.env.NEXT_TICKET_TYPE === 'general';
+
 // Mock data
-const TICKET = {
-  title: 'PANCHITOS PARTY',
-  subtitle: 'Traete a tu amigo normie a festejar a La Crypta',
+const EVENT = {
+  title: 'Bitcoin Pizza Day',
+  description: 'Conectá con la Comunidad Bitcoiner',
   date: 'Viernes 17 de Enero - 20:00hs hasta las 02:00hs',
-  description: [
-    'PANCHOS 🌭',
-    'Entretenimiento',
-    'Presentaciones',
-    'Bitcoiners',
-    'No sabes nada de Bitcoin pero te interesa? Vení!',
-  ],
-  imageUrl: 'https://placehold.co/400',
-  value: parseInt(process.env.NEXT_TICKET_PRICE_ARS || '1'), // Updated ticket price
-  valueType: 'ARS',
+  imageUrl: '',
+};
+
+const TICKET = {
+  title: TICKET_TYPE_GENERAL ? 'Entrada General' : 'Entrada Premium',
+  value: TICKET_TYPE_GENERAL ? 14.99 : 39.99, // Updated ticket price
+  valueType: 'USD',
 };
 
 const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
@@ -284,7 +284,7 @@ export default function Page() {
     const calculatePrices = async () => {
       try {
         // Calculate discounted price in SAT
-        const discountedPriceSAT = Math.round((TICKET.value) * discountMultiple);
+        const discountedPriceSAT = Math.round(TICKET.value * discountMultiple);
         setTicketPriceSAT(discountedPriceSAT);
 
         // Calculate total in ARS
@@ -359,7 +359,12 @@ export default function Page() {
     <>
       <div className="flex flex-col md:flex-row w-full min-h-[100dvh]">
         {/* Aside info */}
-        <aside className="bg-[url('../../public/background-1.png')] bg-cover bg-[center_top_-100px] relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0">
+        <aside
+          className={`bg-black bg-cover relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0`}
+          style={{
+            backgroundImage: `url('/${EVENT?.imageUrl || ''}')`,
+          }}
+        >
           <Navbar />
           <div
             className={cn(
@@ -369,26 +374,26 @@ export default function Page() {
           >
             {screen === 'information' ? (
               <>
-                <Card className="p-4 bg-black bg-opacity-85">
-                  <div className="flex flex-col items-center">
-                    <CardTitle>{TICKET.title}</CardTitle>
-                    <CardTitle className="text-base mt-2">{TICKET.subtitle} </CardTitle>
-                    <CardTitle className="text-sm mt-2">Villanueva 1367, CABA</CardTitle>
-                    <CardContent>
-                      <div className="mt-2">{TICKET.date}</div>
-                      <ul className="list-disc pl-5 mt-4 text-sm">
-                        {TICKET.description.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
-                      </ul>
-                    </CardContent>
+                <div className="p-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col">
+                      <h1 className="text-2xl font-semibold leading-none tracking-tight">
+                        {EVENT?.title}
+                      </h1>
+                      <p>{EVENT?.description}</p>
+                    </div>
+                    <div className="flex flex-col">
+                      <p>Villanueva 1367, CABA</p>
+                      <p>{EVENT?.date}</p>
+                    </div>
                   </div>
-                </Card>
+                </div>
                 {!maxTicketsReached && (
                   <>
-                    <Card className="p-4 bg-black bg-opacity-85 mt-4">
+                    <Card className="p-4 mt-4">
                       <div className="flex justify-between items-center gap-4">
                         <div>
+                          <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
                             <>
                               {discountMultiple !== 1 && (
@@ -449,7 +454,7 @@ export default function Page() {
                         </div>
                       </div>
                     </Card>
-                    <Card className="bg-black bg-opacity-85">
+                    <Card>
                       <div className="p-4">
                         <div className="flex gap-4 justify-between items-center">
                           <p className="text-text">Total</p>
@@ -459,7 +464,9 @@ export default function Page() {
                                 <>
                                   {discountMultiple !== 1 && (
                                     <span className="line-through mr-2 text-text">
-                                      {Math.round(totalMiliSats / discountMultiple)}
+                                      {Math.round(
+                                        totalMiliSats / discountMultiple
+                                      )}
                                     </span>
                                   )}
                                   {totalMiliSats} {TICKET.valueType}
