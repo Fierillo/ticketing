@@ -20,7 +20,8 @@ interface UseOrderReturn {
   }) => Promise<OrderRequestReturn>;
   claimOrderPayment: (
     data: OrderUserData,
-    zapReceiptEvent: Event
+    zapReceiptEvent: Event,
+    ticketSelected: string
   ) => Promise<OrderClaimReturn>;
   clear: () => void;
 }
@@ -69,9 +70,9 @@ const useOrder = (): UseOrderReturn => {
     if (!invoice || isSettled) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch("/api/ticket/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const res = await fetch('/api/ticket/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ invoice, verify }),
         });
         const data = await res.json();
@@ -93,7 +94,8 @@ const useOrder = (): UseOrderReturn => {
 
   const claimOrderPayment = async (
     data: OrderUserData,
-    zapReceiptEvent: Event
+    zapReceiptEvent: Event,
+    ticketSelected: string
   ): Promise<OrderClaimReturn> => {
     try {
       const body: any = {
@@ -101,6 +103,7 @@ const useOrder = (): UseOrderReturn => {
         email: data.email,
         zapReceipt: zapReceiptEvent,
         code: data.code,
+        ticketSelected,
       };
       console.log('claimOrderPayment params', body);
 

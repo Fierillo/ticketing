@@ -15,6 +15,7 @@ interface FormCustomerProps {
   discountMultiple: number;
   isCodeLoading: boolean;
   setCode: (code: string) => void;
+  ticketSelected: string | null;
 }
 
 export function FormCustomer({
@@ -22,6 +23,7 @@ export function FormCustomer({
   discountMultiple,
   isCodeLoading,
   setCode,
+  ticketSelected,
 }: FormCustomerProps) {
   // Form
   const [fullname, setFullname] = useState<string>('');
@@ -74,6 +76,7 @@ export function FormCustomer({
       fullname,
       email,
       newsletter,
+      ticketSelected,
     };
 
     const status = 200;
@@ -184,7 +187,16 @@ export function FormCustomer({
                   </div>
                 </div>
               </div>
-              <Button type="submit" disabled={loading || maxTicketsReached}>
+              <Button
+                type="submit"
+                disabled={
+                  loading ||
+                  maxTicketsReached ||
+                  !ticketSelected ||
+                  !fullname ||
+                  !email
+                }
+              >
                 {loading ? 'Generando ticket' : 'Reservar'}
               </Button>
             </form>

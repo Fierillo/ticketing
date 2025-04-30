@@ -52,6 +52,7 @@ export const orderClaimSchema = z.object({
     sig: z.string().length(128, { message: 'Invalid signature' }),
   }),
   code: z.string().optional(),
+  ticketSelected: z.string().min(1, { message: 'Ticket selected is required' }),
   // claimEvent: claimEventSchema,
 });
 

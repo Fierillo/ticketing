@@ -26,7 +26,7 @@ async function createOrder(
   fullname: string,
   email: string,
   ticketQuantity: number,
-  totalMiliSats: number,
+  totalMiliSats: number
 ): Promise<CreateOrderResponse> {
   const eventReferenceId: string = randomBytes(32).toString('hex');
 
@@ -68,7 +68,8 @@ async function updatePaidOrder(
   fullname: string,
   email: string,
   zapReceipt: Event,
-  code: string | null
+  code: string | null,
+  ticketSelected: string | null
 ): Promise<UpdatePaidOrderResponse> {
   const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
 
@@ -118,11 +119,9 @@ async function updatePaidOrder(
       let tickets: Ticket[] = [];
 
       for (let i = 0; i < order.ticketQuantity; i++) {
-        const ticketId: string = randomBytes(16).toString('hex');
-
         const ticket: Ticket | null = await prisma.ticket.create({
           data: {
-            ticketId,
+            ticketId: ticketSelected,
             userId: order.userId,
             orderId: order.id,
           },

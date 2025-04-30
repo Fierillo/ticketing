@@ -149,6 +149,8 @@ export default function Page() {
 
       setScreen('payment');
 
+      if (!ticketSelected) return;
+
       // Create new order
       try {
         const { pr, eventReferenceId, verify } = await requestNewOrder({
@@ -184,38 +186,36 @@ export default function Page() {
       requestNewOrder,
       setPaymentRequest,
       setEventReferenceId,
+      ticketSelected,
     ]
   );
 
   // Process payment via nostr event
-  const processPayment = useCallback(
-    async (_event: any, _userData: OrderUserData) => {
-      try {
-        const event: Event = convertEvent(_event);
+  const processPayment = useCallback(async () => {
+    try {
+      const event: Event = convertEvent(events[0]);
 
-        if (!event) {
-          console.warn('Event not defined ');
-          return;
-        }
-
-        if (!_userData) {
-          console.warn('User data not defined ');
-          return;
-        }
-
-        await claimOrderPayment(_userData, event);
-
-        setUserData(undefined);
-      } catch (error: any) {
-        setOpenAlert(true);
-        setAlertText(error.message);
+      if (!event) {
+        console.warn('Event not defined ');
+        return;
       }
-    },
-    [claimOrderPayment]
-  );
+
+      if (!userData) {
+        console.warn('User data not defined ');
+        return;
+      }
+
+      await claimOrderPayment(userData, event, ticketSelected as string);
+
+      setUserData(undefined);
+    } catch (error: any) {
+      setOpenAlert(true);
+      setAlertText(error.message);
+    }
+  }, [claimOrderPayment]);
 
   useEffect(() => {
-    events && events.length && userData && processPayment(events[0], userData);
+    events && events.length && userData && processPayment();
   }, [events, userData, processPayment]);
 
   // Process payment via LUD-21 (using with useSubscription hook form lawallet/rect)
@@ -680,6 +680,7 @@ export default function Page() {
                 discountMultiple={discountMultiple}
                 isCodeLoading={isCodeLoading}
                 setCode={setCode}
+                ticketSelected={ticketSelected}
               />
             )}
 

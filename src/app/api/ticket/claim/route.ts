@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       throw new AppError(result.error.errors[0].message, 400);
     }
 
-    const { fullname, email, zapReceipt, code } = result.data;
+    const { fullname, email, zapReceipt, code, ticketSelected } = result.data;
 
     // Validate zapReceipt
     const isValidEvent = validateEvent(zapReceipt);
@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
         fullname,
         email,
         zapReceipt,
-        code || null
+        code || null,
+        ticketSelected
       );
     } catch (error: any) {
       throw new AppError('Failed to update order', 500);
