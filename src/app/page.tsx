@@ -379,33 +379,25 @@ export default function Page() {
     <>
       <div className="flex flex-col md:flex-row w-full min-h-[100dvh]">
         {/* Aside info */}
-        <aside className="bg-[url('../../public/background-1.png')] bg-cover bg-[center_top_-100px] relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0">
+        <aside className="relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0 bg-black">
           <Navbar />
-          <div
-            className={cn(
-              'w-full max-w-[520px]  px-4',
-              screen === 'information' ? 'my-4' : ''
-            )}
-          >
+          <div className="flex flex-col gap-2 w-full max-w-[520px] p-4">
             {screen === 'information' ? (
               <>
-                <Card className="p-4 bg-black bg-opacity-85">
-                  <div className="flex flex-col items-center">
-                    <CardTitle>{EVENT.title}</CardTitle>
-                    <CardTitle className="text-base mt-2">
-                      {EVENT.subtitle}
-                    </CardTitle>
-                    <CardTitle className="text-sm mt-2">
-                      Villanueva 1367, CABA
-                    </CardTitle>
-                    <CardContent>
-                      <div className="mt-2">{EVENT.date}</div>
-                      {/* <ul className="list-disc pl-5 mt-4 text-sm">
-                        {EVENT.description.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
-                      </ul> */}
-                    </CardContent>
+                <Card className="p-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col">
+                      <h1 className="text-2xl font-semibold leading-none tracking-tight">
+                        {EVENT.title}
+                      </h1>
+                      <p className="text-sm text-muted-foreground">
+                        {EVENT.subtitle}
+                      </p>
+                    </div>
+                    <div className="flex flex-col">
+                      <p>Villanueva 1367, CABA</p>
+                      <p>{EVENT.date}</p>
+                    </div>
                   </div>
                 </Card>
                 <RadioGroup defaultValue={ticketSelected as string}>
@@ -413,16 +405,15 @@ export default function Page() {
                     <>
                       <Label htmlFor={ticket?.title}>
                         <Card
-                          className="flex justify-between p-4 bg-black bg-opacity-85 mt-4 cursor-pointer"
+                          className="flex justify-between p-4 cursor-pointer"
                           onClick={() => setTicketSelected(ticket?.id)}
                         >
-                          <div className="flex justify-between items-center gap-4">
-                            <div>
-                              {ticket?.title}
-                              <p className="font-semibold text-lg">
-                                {ticket?.amount} {ticket?.currency}
-                              </p>
-                            </div>
+                          <div className="flex flex-col justify-between">
+                            <p>{ticket?.title}</p>
+                            <p className="font-semibold text-lg">
+                              {ticket?.amount} {ticket?.currency}
+                            </p>
+                            <p className="text-sm">Bloque: 1 / 5</p>
                           </div>
 
                           <div className="mt-1">
