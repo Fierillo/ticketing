@@ -1,6 +1,7 @@
 // Module that calculate "BlockPrice" a number to update ticket prices in a epoch basis.
 
 const BLOCK_INTERVAL = 21
+const URL = process.env.NEXT_PUBLIC_API_URL
 
 export interface BlockPriceStats {
   totalSold: number   // total de tickets vendidos
@@ -9,7 +10,7 @@ export interface BlockPriceStats {
 
 export async function blockPrice(): Promise<BlockPriceStats> {
   // 1. Calls API to get total ticket count.
-  const res = await fetch('/api/ticket/count', {
+  const res = await fetch(`${URL}/api/ticket/count`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   })
