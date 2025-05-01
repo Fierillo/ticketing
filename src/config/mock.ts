@@ -4,7 +4,7 @@ export const EVENT = {
   date: 'Viernes 23 de Mayo - 19:00hs hasta las 02:00hs',
   location: 'Villanueva 1367, Belgrano, CABA',
   imageUrl: 'background-pizza.png',
-  emailTitle: 'LA CRYPTA',
+  emailTitle: 'Bitcoin Pizza Day',
   emailSubject: 'Tu entrada para el Bitcoin Pizza Day',
 };
 
