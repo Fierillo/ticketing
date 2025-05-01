@@ -22,11 +22,11 @@ const useOrder = (): UseOrderReturn => {
   const [isPaid, setIsPaid] = useState<boolean>(false);
   const [verify, setVerify] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<string | null>(null);
-  const [isSettled, setIsSettled] = useState<boolean>(false);
 
   const requestNewOrder = useCallback(
     async (data: OrderRequestData): Promise<OrderRequestReturn> => {
       console.log('requestNewOrder params', data);
+      setIsPaid(false);
       try {
         const response = await fetch('/api/ticket/request', {
           method: 'POST',
@@ -59,7 +59,7 @@ const useOrder = (): UseOrderReturn => {
 
   // Polling LUD-21
   useEffect(() => {
-    if (!invoice || isSettled) return;
+    if (!invoice || isPaid) return setIsPaid(false);
     const interval = setInterval(async () => {
       try {
         const res = await fetch("/api/ticket/verify", {
@@ -69,7 +69,7 @@ const useOrder = (): UseOrderReturn => {
         });
         const data = await res.json();
         if (data.settled) {
-          setIsSettled(true);
+          setIsPaid(true);
           clearInterval(interval);
         }
       } catch {
@@ -78,11 +78,13 @@ const useOrder = (): UseOrderReturn => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [invoice, isSettled]);
+  }, [invoice, isPaid]);
 
   const clear = useCallback(() => {
     setIsPaid(false);
-  }, [setIsPaid]);
+    setInvoice(null);
+    setVerify(null);
+  }, []);
 
   const claimOrderPayment = async (
     data: OrderUserData,
@@ -112,7 +114,7 @@ const useOrder = (): UseOrderReturn => {
 
       const result: { data: { claim: boolean } } = await response.json();
 
-      setIsPaid(result.data.claim || isSettled);
+      setIsPaid(result.data.claim);
 
       return new Promise((resolve) => {
         console.log('claimOrderPayment', result.data);

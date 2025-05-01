@@ -85,12 +85,7 @@ export default function Page() {
 
   // Hooks
   const { isPaid, requestNewOrder, claimOrderPayment, clear } = useOrder();
-  const {
-    discountMultiple,
-    code,
-    isLoading: isCodeLoading,
-    setCode,
-  } = useCode();
+  const { discountMultiple,code, isLoading: isCodeLoading, setCode } = useCode();
 
   // Memoize filters to prevent unnecessary re-renders
   const filters = useMemo(
@@ -294,7 +289,7 @@ export default function Page() {
 
   // Change screen when payment is confirmed
   useEffect(() => {
-    if (isPaid) {
+    if (isPaid && screen === 'payment') {
       setScreen('summary');
     }
   }, [isPaid]);
