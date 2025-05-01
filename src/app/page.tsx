@@ -554,11 +554,11 @@ export default function Page() {
                       </div>
                     </div>
                   </Card>
-                  <div className="p-4">
+                  <div className="p-4 bg-black bg-opacity-85">
                     <div className="flex gap-4 justify-between items-center">
-                      <p className="text-text">Total</p>
+                      <p className="text-text font-bold">Total</p>
                       <div className="text-right">
-                        <p className="font-bold text-md">
+                        <p className="font-bold text-lg">
                           {discountMultiple === 1
                             ? (TICKET?.value + blockBatch * 10) * ticketQuantity
                             : Math.round(
