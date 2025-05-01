@@ -1,13 +1,13 @@
 export const EVENT = {
   title: 'Bitcoin Pizza Day',
-  description: 'Conectá con la Comunidad Bitcoiner',
+  description: 'Conecta con la Comunidad Bitcoiner',
   date: 'Viernes 23 de Mayo - 19:00hs hasta las 02:00hs',
   imageUrl: 'background-pizza.png',
 };
 
 export const TICKET = {
-  title: 'Entrada General',
-  value: 10,
+  title: 'TARJETA METÁLICA',
+  value: 1,
   currency: 'USD',
-  type: 'general',
+  type: 'metal',
 };

@@ -52,7 +52,6 @@ export async function POST(req: NextRequest) {
     try {
       const { blockValue } = await blockPrice();
       blockBatch = blockValue;
-      console.log('blockBatch', blockBatch);
     } catch (error: any) {
       console.error('Error fetching block price:', error);
     }

@@ -306,9 +306,7 @@ export default function Page() {
         const { totalSold, blockValue } = await blockPrice();
         setBlockBatch(blockValue);
         setTotalTicketsSold(totalSold);
-        // debug
-        console.log('totalSold:', totalSold);
-        console.log('blockValue:', blockValue);
+        console.log('ticketPrice', TICKET.value);
       } catch (error: any) {
         console.error('Error fetching block price:', error);
       }
@@ -384,7 +382,7 @@ export default function Page() {
             {screen === 'information' ? (
               <>
                 <div>
-                  <Card className="p-4 gap-2 text-center">
+                  <Card className="p-4 gap-2 text-center opacity-95">
                     <div className="flex flex-col">
                       <h1 className="text-2xl font-semibold mb-4 leading-none tracking-tight">
                         {EVENT?.title}
@@ -399,7 +397,7 @@ export default function Page() {
                 </div>
                 {!maxTicketsReached && (
                   <>
-                    <Card className="p-4 mt-4">
+                    <Card className="p-4 mt-4 opacity-95">
                       <div className="flex justify-between items-center gap-4 mb-4">
                         <BlockBar totalSquares={10} filled={blockBatch} />
                       </div>
@@ -452,7 +450,7 @@ export default function Page() {
                         )}
                       </div>
                     </Card>
-                    <div className="p-4 bg-black bg-opacity-85">
+                    <div className="p-4 bg-black bg-opacity-85 mt-4">
                       <div className="flex gap-4 justify-between items-center">
                         <p className="text-text font-bold">Total</p>
                         <div className="text-right">
@@ -510,7 +508,7 @@ export default function Page() {
                           </div>
                         </div>
                       </Card>
-                      <div className="p-4">
+                      {/*<div className="p-4 mt-4">
                         <div className="flex gap-4 justify-between items-center">
                           <p className="text-text text-md">Total</p>
                           <div className="flex flex-col text-right">
@@ -532,13 +530,13 @@ export default function Page() {
                             )}
                           </div>
                         </div>
-                      </div>
+                      </div>*/}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
 
                 <div className="hidden md:block ">
-                  <Card className="p-4 bg-background">
+                  <Card className="p-4 bg-background opacity-95">
                     <div className="flex justify-between items-center gap-4">
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
@@ -554,7 +552,7 @@ export default function Page() {
                       </div>
                     </div>
                   </Card>
-                  <div className="p-4 bg-black bg-opacity-85">
+                  <div className="p-4 bg-black bg-opacity-85 mt-4">
                     <div className="flex gap-4 justify-between items-center">
                       <p className="text-text font-bold">Total</p>
                       <div className="text-right">
