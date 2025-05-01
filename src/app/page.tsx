@@ -497,7 +497,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {ticketPriceSAT} {TICKET?.currency}
+                              {ticketPriceSAT + blockBatch * 10} {TICKET?.currency}
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -516,9 +516,9 @@ export default function Page() {
                           <div className="flex flex-col text-right">
                             <p className="font-bold text-md">
                               {discountMultiple === 1
-                                ? TICKET?.value * ticketQuantity
+                                ? (TICKET?.value + blockBatch * 10) * ticketQuantity
                                 : Math.round(
-                                    TICKET?.value *
+                                    (TICKET?.value + blockBatch * 10) *
                                       ticketQuantity *
                                       discountMultiple
                                   )}{' '}
@@ -543,7 +543,7 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {TICKET?.value} {TICKET?.currency}
+                          {TICKET?.value + blockBatch * 10} {TICKET?.currency}
                         </p>
                       </div>
                       <div className="flex gap-2 items-center">
@@ -560,7 +560,7 @@ export default function Page() {
                       <div className="text-right">
                         <p className="font-bold text-md">
                           {discountMultiple === 1
-                            ? TICKET?.value * ticketQuantity
+                            ? (TICKET?.value + blockBatch * 10) * ticketQuantity
                             : Math.round(
                                 TICKET?.value *
                                   ticketQuantity *
