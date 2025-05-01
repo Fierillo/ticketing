@@ -18,6 +18,7 @@ import {
 } from '@/lib/utils/nostr';
 
 import { TICKET } from '@/config/mock';
+import { blockPrice } from '@/lib/utils/blockPrice';
 
 let apiUrl = process.env.NEXT_PUBLIC_API_URL;
 let walias = process.env.NEXT_POS_WALIAS;
@@ -47,8 +48,16 @@ export async function POST(req: NextRequest) {
     if (!lnurlp?.callback) throw new AppError('Invalid LNURLP data', 500);
 
     // 4. Calculate total msats
+    let blockBatch = 0;
+    try {
+      const { blockValue } = await blockPrice();
+      blockBatch = blockValue;
+      console.log('blockBatch', blockBatch);
+    } catch (error: any) {
+      console.error('Error fetching block price:', error);
+    }
     const unitPrice = Number(TICKET?.value);
-    const total = Number(TICKET?.value) * ticketQuantity * discount;
+    const total = Number(TICKET?.value + blockBatch * 10) * ticketQuantity * discount;
 
     if (isNaN(unitPrice)) throw new AppError('Invalid ticket price', 500);
 

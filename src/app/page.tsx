@@ -407,7 +407,7 @@ export default function Page() {
                         <div>
                           <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
-                            {TICKET?.value} {TICKET?.currency}
+                            {TICKET?.value+blockBatch*10} {TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -458,9 +458,9 @@ export default function Page() {
                         <div className="text-right">
                           <p className="font-bold text-md">
                             {discountMultiple === 1
-                              ? TICKET?.value * ticketQuantity
+                              ? (TICKET?.value + blockBatch * 10) * ticketQuantity
                               : Math.round(
-                                  TICKET?.value *
+                                  (TICKET?.value + blockBatch * 10) *
                                     ticketQuantity *
                                     discountMultiple
                                 )}
