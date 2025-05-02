@@ -60,7 +60,6 @@ const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get th
 export default function Page() {
   // Block Price
   const [blockBatch, setBlockBatch] = useState<number>(0);
-  const [totalTicketsSold, setTotalTicketsSold] = useState<number>(0);
   // Flow
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -305,14 +304,13 @@ export default function Page() {
       try {
         const { totalSold, blockValue } = await blockPrice();
         setBlockBatch(blockValue);
-        setTotalTicketsSold(totalSold);
         console.log('ticketPrice', TICKET.value);
       } catch (error: any) {
         console.error('Error fetching block price:', error);
       }
     };
 
-    fetchBlockPrice();
+    TICKET?.type !== 'general' && fetchBlockPrice();
   }, []);
 
   // Check total tickets in the database on component mount
@@ -362,6 +360,13 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
+  const total =
+    discountMultiple === 1
+      ? (TICKET?.value + blockBatch * 10) * ticketQuantity
+      : Math.round(
+          (TICKET?.value + blockBatch * 10) * ticketQuantity * discountMultiple
+        );
+
   return (
     <>
       <div className="flex flex-col md:flex-row w-full min-h-[100dvh]">
@@ -398,14 +403,11 @@ export default function Page() {
                 {!maxTicketsReached && (
                   <>
                     <Card className="p-4 mt-4 opacity-95">
-                      <div className="flex justify-between items-center gap-4 mb-4">
-                        <BlockBar totalSquares={10} filled={blockBatch} />
-                      </div>
                       <div className="flex justify-between items-center gap-4">
                         <div>
                           <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
-                            {TICKET?.value+blockBatch*10} {TICKET?.currency}
+                            {TICKET?.value + blockBatch * 10} {TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -449,19 +451,16 @@ export default function Page() {
                           </div>
                         )}
                       </div>
+                      {TICKET?.type !== 'general' && (
+                        <BlockBar totalSquares={5} filled={blockBatch} />
+                      )}
                     </Card>
                     <div className="p-4 bg-black bg-opacity-85 mt-4">
                       <div className="flex gap-4 justify-between items-center">
                         <p className="text-text font-bold">Total</p>
                         <div className="text-right">
                           <p className="font-bold text-lg">
-                            {discountMultiple === 1
-                              ? (TICKET?.value + blockBatch * 10) * ticketQuantity
-                              : Math.round(
-                                  (TICKET?.value + blockBatch * 10) *
-                                    ticketQuantity *
-                                    discountMultiple
-                                )}
+                            {total}
                             {TICKET.currency}
                           </p>
                           {discountMultiple !== 1 && (
@@ -495,7 +494,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {ticketPriceSAT + blockBatch * 10} {TICKET?.currency}
+                              {total} {TICKET?.currency}
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -557,14 +556,7 @@ export default function Page() {
                       <p className="text-text font-bold">Total</p>
                       <div className="text-right">
                         <p className="font-bold text-lg">
-                          {discountMultiple === 1
-                            ? (TICKET?.value + blockBatch * 10) * ticketQuantity
-                            : Math.round(
-                                TICKET?.value *
-                                  ticketQuantity *
-                                  discountMultiple
-                              )}{' '}
-                          {TICKET.currency}
+                          {total} {TICKET.currency}
                         </p>
                         {discountMultiple !== 1 && (
                           <p className="font-semibold text-sm text-primary">
