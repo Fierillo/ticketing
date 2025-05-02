@@ -69,7 +69,6 @@ const useOrder = (): UseOrderReturn => {
           body: JSON.stringify({ invoice, verify }),
         });
         const data = await res.json();
-        console.log('Settled?', data.settled);
         if (data.settled) {
           clearInterval(interval);
           setIsPaid(true);

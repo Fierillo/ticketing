@@ -6,8 +6,6 @@ import {
 import { SESClientInterface } from '../types/ses';
 import { EVENT } from '@/config/mock';
 
-console.log(' ');
-
 class SESClient implements SESClientInterface {
   private client: SESv2Client;
 

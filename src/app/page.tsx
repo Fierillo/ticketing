@@ -156,7 +156,6 @@ export default function Page() {
   // Process payment via nostr event
   const processPayment = useCallback(
     async (_event: any, _userData: OrderUserData) => {
-      console.log('🛎️ processPayment invocado');
       try {
         const event: Event = convertEvent(_event);
 
@@ -183,7 +182,6 @@ export default function Page() {
 
   useEffect(() => {
     events && events.length && userData && processPayment(events[0], userData);
-    console.log(isPaid)
   }, [events, userData, processPayment]);
 
   // Process payment via LUD-21 (using with useSubscription hook form lawallet/rect)
@@ -303,7 +301,6 @@ export default function Page() {
         const { totalSold, blockValue } = await blockPrice();
         setBlockBatch(blockValue);
         setTotalTicketsSold(totalSold);
-        console.log('ticketPrice', TICKET.value);
       } catch (error: any) {
         console.error('Error fetching block price:', error);
       }
@@ -505,7 +502,7 @@ export default function Page() {
                           </div>
                         </div>
                       </Card>
-                      {/*<div className="p-4 mt-4">
+                      <div className="p-4 mt-4">
                         <div className="flex gap-4 justify-between items-center">
                           <p className="text-text text-md">Total</p>
                           <div className="flex flex-col text-right">
@@ -527,7 +524,7 @@ export default function Page() {
                             )}
                           </div>
                         </div>
-                      </div>*/}
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
