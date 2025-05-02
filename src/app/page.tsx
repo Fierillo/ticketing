@@ -156,6 +156,7 @@ export default function Page() {
   // Process payment via nostr event
   const processPayment = useCallback(
     async (_event: any, _userData: OrderUserData) => {
+      console.log('🛎️ processPayment invocado');
       try {
         const event: Event = convertEvent(_event);
 
@@ -182,6 +183,7 @@ export default function Page() {
 
   useEffect(() => {
     events && events.length && userData && processPayment(events[0], userData);
+    console.log(isPaid)
   }, [events, userData, processPayment]);
 
   // Process payment via LUD-21 (using with useSubscription hook form lawallet/rect)

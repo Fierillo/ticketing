@@ -21,12 +21,13 @@ interface UseOrderReturn {
 const useOrder = (): UseOrderReturn => {
   const [isPaid, setIsPaid] = useState<boolean>(false);
   const [verify, setVerify] = useState<string | null>(null);
+  const [eventReferenceId, setEventReferenceId] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<string | null>(null);
 
+  // call API/ticket/request to fetch invoice, verify and eventReferenceId
   const requestNewOrder = useCallback(
     async (data: OrderRequestData): Promise<OrderRequestReturn> => {
       console.log('requestNewOrder params', data);
-      setIsPaid(false);
       try {
         const response = await fetch('/api/ticket/request', {
           method: 'POST',
@@ -44,7 +45,7 @@ const useOrder = (): UseOrderReturn => {
         const result: { data: OrderRequestReturn } = await response.json();
         setInvoice(result.data.pr);
         setVerify(result.data.verify);
-        setIsPaid(false);
+        setEventReferenceId(result.data.eventReferenceId);
 
         return new Promise((resolve) => {
           console.log('requestNewOrder response', result.data);
@@ -59,7 +60,7 @@ const useOrder = (): UseOrderReturn => {
 
   // Polling LUD-21
   useEffect(() => {
-    if (!invoice || isPaid) return setIsPaid(false);
+    if (!invoice || isPaid) return
     const interval = setInterval(async () => {
       try {
         const res = await fetch("/api/ticket/verify", {
@@ -68,9 +69,10 @@ const useOrder = (): UseOrderReturn => {
           body: JSON.stringify({ invoice, verify }),
         });
         const data = await res.json();
+        console.log('Settled?', data.settled);
         if (data.settled) {
-          setIsPaid(true);
           clearInterval(interval);
+          setIsPaid(true);
         }
       } catch {
         /* ignora errores de polling */
@@ -114,7 +116,7 @@ const useOrder = (): UseOrderReturn => {
 
       const result: { data: { claim: boolean } } = await response.json();
 
-      setIsPaid(result.data.claim);
+      if (result.data.claim) setIsPaid(true);
 
       return new Promise((resolve) => {
         console.log('claimOrderPayment', result.data);

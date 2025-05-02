@@ -64,8 +64,11 @@ export async function POST(req: NextRequest) {
       throw new AppError('Failed to update order', 500);
     }
 
+    // If order already paid?
+    const isNewClaim = !updateOrderResponse.alreadyPaid;
+
     // AWS SES
-    if (!updateOrderResponse.alreadyPaid) {
+    if (isNewClaim) {
       try {
         for (const ticket of updateOrderResponse.tickets) {
           await ses.sendEmailOrder(email, ticket.ticketId!); // TODO: send one email with all tickets
@@ -77,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     // Response
     const response: OrderClaimResponse = {
-      claim: true,
+      claim: isNewClaim,
     };
 
     return NextResponse.json({
