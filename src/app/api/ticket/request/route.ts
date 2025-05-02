@@ -19,7 +19,11 @@ import {
 
 import { TICKET } from '@/config/mock';
 
-export const requestOrderSchema = z.object({
+let apiUrl = process.env.NEXT_PUBLIC_API_URL;
+let walias = process.env.NEXT_POS_WALIAS;
+let listId = process.env.NEXT_SENDY_LIST_ID;
+
+const requestOrderSchema = z.object({
   fullname: z.string().min(3, { message: 'Fullname is required' }),
   email: z.string().email({ message: 'Invalid email address' }),
   ticketQuantity: z
@@ -30,10 +34,6 @@ export const requestOrderSchema = z.object({
   newsletter: z.boolean({ message: 'Newsletter must be a boolean' }),
   code: z.string().optional(),
 });
-
-let apiUrl = process.env.NEXT_PUBLIC_API_URL;
-let walias = process.env.NEXT_POS_WALIAS;
-let listId = process.env.NEXT_SENDY_LIST_ID;
 
 export async function POST(req: NextRequest) {
   try {
