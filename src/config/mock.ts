@@ -10,7 +10,7 @@ export const EVENT = {
 
 export const TICKET = {
   title: 'TARJETA METÁLICA',
-  value: 1,
+  value: 10,
   currency: 'USD',
   type: 'metal',
 };

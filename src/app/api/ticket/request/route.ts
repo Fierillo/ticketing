@@ -6,7 +6,7 @@ import { ses } from '@/services/ses';
 import { getLnurlpFromWalias, generateInvoice } from '@/services/ln';
 import { prisma } from '@/services/prismaClient';
 
-import { calculateCurrencyToSats } from '@/lib/utils/price';
+import { convertCurrencyToSats } from '@/lib/utils/price';
 import { AppError } from '@/lib/errors/appError';
 import { requestOrderSchema } from '@/lib/validation/requestOrderSchema';
 import { getCodeDiscountFront } from '@/lib/utils/codes';
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     if (isNaN(unitPrice)) throw new AppError('Invalid ticket price', 500);
 
-    const priceInSats = await calculateCurrencyToSats(TICKET?.currency, total);
+    const priceInSats = await convertCurrencyToSats(total, TICKET?.currency);
     const totalMsats = priceInSats * 1000;
 
     // 5. Create order & (optional) subscribe to newsletter in parallel
