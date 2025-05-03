@@ -47,7 +47,7 @@ import useCode from '@/hooks/useCode';
 import useOrder from '@/hooks/useOrder';
 import { useNostr, useSubscription } from '@lawallet/react';
 import { convertEvent } from '../lib/utils/nostr';
-import { calculateTicketPrice } from '../lib/utils/price';
+import { calculateTicketPrice, convertCurrencyToSats } from '../lib/utils/price';
 import { useRelay } from '@/hooks/useRelay';
 
 // Mock data
@@ -70,8 +70,8 @@ export default function Page() {
   const [userData, setUserData] = useState<OrderUserData | undefined>(
     undefined
   );
-  const [totalMiliSats, setTotalMiliSats] = useState<number>(0);
-  const [ticketPriceSAT, setTicketPriceSAT] = useState<number>(TICKET.value);
+  const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [ticketFiatPrice, setTicketFiatPrice] = useState<number>(TICKET.value);
   const [ticketQuantity, setTicketQuantity] = useState<number>(1); // Set initial ticket quantity to 1
   const [paymentRequest, setPaymentRequest] = useState<string | undefined>(
     undefined
@@ -360,12 +360,27 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
-  const total =
-    discountMultiple === 1
-      ? (TICKET?.value + blockBatch * 10) * ticketQuantity
-      : Math.round(
-          (TICKET?.value + blockBatch * 10) * ticketQuantity * discountMultiple
-        );
+  // Update ticket price calculations
+  useEffect(() => {
+    const calculatePrices = async () => {
+      try {
+        // 1. (base price + block increase) * discount
+        const ticketPrice = (TICKET.value + blockBatch * 10) * discountMultiple
+        setTicketFiatPrice(ticketPrice)
+  
+        // 2. turn fiat price to sats
+        const satsPerTicket = await convertCurrencyToSats(ticketPrice, TICKET.currency)
+  
+        // 3. calculate total price
+        const totalSats = satsPerTicket * ticketQuantity
+        setTotalPrice(totalSats)
+      } catch (err: any) {
+        console.error('Error calculando precios:', err)
+      }
+    }
+  
+    calculatePrices()
+  }, [ticketQuantity, discountMultiple, blockBatch])
 
   return (
     <>
@@ -407,7 +422,7 @@ export default function Page() {
                         <div>
                           <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
-                            {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+                            {ticketFiatPrice} {TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -460,8 +475,7 @@ export default function Page() {
                         <p className="text-text font-bold">Total</p>
                         <div className="text-right">
                           <p className="font-bold text-lg">
-                            {total}
-                            {TICKET.currency}
+                            {totalPrice}{' SAT'}
                           </p>
                           {discountMultiple !== 1 && (
                             <p className="font-semibold text-sm text-primary">
@@ -494,7 +508,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {total} {TICKET?.currency}
+                              {totalPrice}{' SAT'}
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -540,7 +554,7 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+                          {ticketFiatPrice} {TICKET?.currency}
                         </p>
                       </div>
                       <div className="flex gap-2 items-center">
@@ -556,7 +570,7 @@ export default function Page() {
                       <p className="text-text font-bold">Total</p>
                       <div className="text-right">
                         <p className="font-bold text-lg">
-                          {total} {TICKET.currency}
+                          {totalPrice}{' SAT'}
                         </p>
                         {discountMultiple !== 1 && (
                           <p className="font-semibold text-sm text-primary">
