@@ -299,12 +299,16 @@ export default function Page() {
       try {
         const { blockValue } = await blockPrice();
         setBlockBatch(blockValue);
+<<<<<<< HEAD
+=======
+        console.log('ticketPrice', TICKET.value);
+>>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
       } catch (error: any) {
         console.error('Error fetching block price:', error);
       }
     };
 
-    fetchBlockPrice();
+    TICKET?.type !== 'general' && fetchBlockPrice();
   }, []);
 
   // Check total tickets in the database on component mount
@@ -354,6 +358,13 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
+  const total =
+    discountMultiple === 1
+      ? (TICKET?.value + blockBatch * 10) * ticketQuantity
+      : Math.round(
+          (TICKET?.value + blockBatch * 10) * ticketQuantity * discountMultiple
+        );
+
   return (
     <>
       <div className="flex flex-col md:flex-row w-full min-h-[100dvh]">
@@ -390,14 +401,15 @@ export default function Page() {
                 {!maxTicketsReached && (
                   <>
                     <Card className="p-4 mt-4 opacity-95">
-                      <div className="flex justify-between items-center gap-4 mb-4">
-                        <BlockBar totalSquares={10} filled={blockBatch} />
-                      </div>
                       <div className="flex justify-between items-center gap-4">
                         <div>
                           <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
+<<<<<<< HEAD
                             {ticketPrice} {TICKET?.currency}
+=======
+                            {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+>>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -441,11 +453,15 @@ export default function Page() {
                           </div>
                         )}
                       </div>
+                      {TICKET?.type !== 'general' && (
+                        <BlockBar totalSquares={5} filled={blockBatch} />
+                      )}
                     </Card>
                     <div className="p-4 bg-black bg-opacity-85 mt-4">
                       <div className="flex gap-4 justify-between items-center">
                         <p className="text-text font-bold">Total</p>
                         <div className="text-right">
+<<<<<<< HEAD
                           {/* Calcula aquí tus valores */}
                           {discountMultiple !== 1 ? (
                             <p className="font-bold text-lg flex justify-end items-baseline gap-2">
@@ -464,6 +480,12 @@ export default function Page() {
                               {totalPrice} SAT
                             </p>
                           )}
+=======
+                          <p className="font-bold text-lg">
+                            {total}
+                            {TICKET.currency}
+                          </p>
+>>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                           {discountMultiple !== 1 && (
                             <p className="font-semibold text-sm text-primary">
                               {' '}{((1 - discountMultiple) * 100).toFixed(0)}
@@ -495,7 +517,11 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
+<<<<<<< HEAD
                               {ticketPrice} {TICKET?.currency}
+=======
+                              {total} {TICKET?.currency}
+>>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -550,7 +576,11 @@ export default function Page() {
                       <p className="text-text font-bold">Total</p>
                       <div className="text-right">
                         <p className="font-bold text-lg">
+<<<<<<< HEAD
                           {totalPrice}{' SAT'}
+=======
+                          {total} {TICKET.currency}
+>>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                         </p>
                         {discountMultiple !== 1 && (
                           <p className="font-semibold text-sm text-primary">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
+import { z } from 'zod';
 
 import { sendy } from '@/services/sendy';
 import { ses } from '@/services/ses';
@@ -8,7 +9,6 @@ import { prisma } from '@/services/prismaClient';
 
 import { convertCurrencyToSats } from '@/lib/utils/price';
 import { AppError } from '@/lib/errors/appError';
-import { requestOrderSchema } from '@/lib/validation/requestOrderSchema';
 import { getCodeDiscountFront } from '@/lib/utils/codes';
 import { createOrder } from '@/lib/utils/prisma';
 import {
@@ -18,11 +18,22 @@ import {
 } from '@/lib/utils/nostr';
 
 import { TICKET } from '@/config/mock';
-import { blockPrice } from '@/lib/utils/blockPrice';
 
 let apiUrl = process.env.NEXT_PUBLIC_API_URL;
 let walias = process.env.NEXT_POS_WALIAS;
 let listId = process.env.NEXT_SENDY_LIST_ID;
+
+const requestOrderSchema = z.object({
+  fullname: z.string().min(3, { message: 'Fullname is required' }),
+  email: z.string().email({ message: 'Invalid email address' }),
+  ticketQuantity: z
+    .number()
+    .int()
+    .lt(10)
+    .positive({ message: 'Ticket Quantity must be a number' }),
+  newsletter: z.boolean({ message: 'Newsletter must be a boolean' }),
+  code: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,15 +59,15 @@ export async function POST(req: NextRequest) {
     if (!lnurlp?.callback) throw new AppError('Invalid LNURLP data', 500);
 
     // 4. Calculate total msats
-    let blockBatch = 0;
-    try {
-      const { blockValue } = await blockPrice();
-      blockBatch = blockValue;
-    } catch (error: any) {
-      console.error('Error fetching block price:', error);
-    }
+    const totalTickets = 45;
+    const blockValue =
+      TICKET?.type !== 'general' ? Math.floor(totalTickets / 21) * 10 : 0;
+
     const unitPrice = Number(TICKET?.value);
-    const total = Number(TICKET?.value + blockBatch * 10) * ticketQuantity * discount;
+    const total =
+      discount === 1
+        ? (TICKET?.value + blockValue) * ticketQuantity
+        : Math.round((TICKET?.value + blockValue) * ticketQuantity * discount);
 
     if (isNaN(unitPrice)) throw new AppError('Invalid ticket price', 500);
 
