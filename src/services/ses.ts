@@ -4,8 +4,7 @@ import {
   SendEmailCommandInput,
 } from '@aws-sdk/client-sesv2';
 import { SESClientInterface } from '../types/ses';
-
-console.log(' ');
+import { EVENT } from '@/config/mock';
 
 class SESClient implements SESClientInterface {
   private client: SESv2Client;
@@ -27,7 +26,7 @@ class SESClient implements SESClientInterface {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Tu entrada para la Panchitos Party</title>
+        <title>${EVENT.emailTitle}</title>
         <style>
           body {
             font-family: Arial, sans-serif;
@@ -115,8 +114,8 @@ class SESClient implements SESClientInterface {
           <div class="logo-container">
             <img src='https://raw.githubusercontent.com/lacrypta/branding/main/iso/isologo-white.png' alt='la-crypta-logo'>
           </div>
-          <h1>Tu entrada para la Panchitos Party</h1>
-          <p>Te esperamos en: <br>📍 Villanueva 1367, Belgrano, CABA. <br>📅 Viernes 17 de Enero<br>⏰ A partir de las 20:00 hs.</p>
+          <h1>${EVENT.emailTitle}</h1>
+          <p>Te esperamos en: <br>📍 ${EVENT.location} <br>📅 ${EVENT.date}</p>
           <div class="qr-code">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${orderId}" alt="QR Code">
           </div>
@@ -142,7 +141,7 @@ class SESClient implements SESClientInterface {
       Content: {
         Simple: {
           Subject: {
-            Data: 'Tu entrada para la Panchitos Party',
+            Data: EVENT.emailSubject,
           },
           Body: {
             Html: {
@@ -281,7 +280,7 @@ class SESClient implements SESClientInterface {
           },
           Body: {
             Text: {
-              Data: 'Texto de previsualizacion?',
+              Data: '',
             },
             Html: {
               Data: html,
