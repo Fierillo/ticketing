@@ -61,11 +61,13 @@ export async function POST(req: NextRequest) {
 
     // 4. Calculate total msats
     let blockBatch = 0;
-    try {
-      const { blockValue } = await blockPrice();
-      blockBatch = blockValue;
-    } catch (error: any) {
-      console.error('Error fetching block price:', error);
+    if (TICKET.type !== 'general') {
+      try {
+        const { blockValue } = await blockPrice();
+        blockBatch = blockValue;
+      } catch (error: any) {
+        console.error('Error fetching block price:', error);
+      }
     }
     const unitPrice = Number(TICKET?.value);
     const total = Number(TICKET?.value + blockBatch * 10) * ticketQuantity * discount;
