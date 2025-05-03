@@ -23,10 +23,12 @@ const useOrder = (): UseOrderReturn => {
   const [verify, setVerify] = useState<string | null>(null);
   const [eventReferenceId, setEventReferenceId] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
 
   // call API/ticket/request to fetch invoice, verify and eventReferenceId
   const requestNewOrder = useCallback(
     async (data: OrderRequestData): Promise<OrderRequestReturn> => {
+      setEmail(data.email);
       console.log('requestNewOrder params', data);
       try {
         const response = await fetch('/api/ticket/request', {
@@ -66,7 +68,7 @@ const useOrder = (): UseOrderReturn => {
         const res = await fetch("/api/ticket/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoice, verify }),
+          body: JSON.stringify({ invoice, verify, eventReferenceId, email }),
         });
         const data = await res.json();
         if (data.settled) {
@@ -74,7 +76,7 @@ const useOrder = (): UseOrderReturn => {
           setIsPaid(true);
         }
       } catch {
-        /* ignora errores de polling */
+        //
       }
     }, 5000);
 
@@ -97,6 +99,7 @@ const useOrder = (): UseOrderReturn => {
         email: data.email,
         zapReceipt: zapReceiptEvent,
         code: data.code,
+        eventReferenceId: eventReferenceId,
       };
       console.log('claimOrderPayment params', body);
 
@@ -115,10 +118,11 @@ const useOrder = (): UseOrderReturn => {
 
       const result: { data: { claim: boolean } } = await response.json();
 
-      if (result.data.claim) setIsPaid(true);
+      if (result.data.claim) {
+        setIsPaid(true);
+      }
 
       return new Promise((resolve) => {
-        console.log('claimOrderPayment', result.data);
         resolve({
           ...result.data,
         });

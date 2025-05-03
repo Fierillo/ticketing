@@ -10,6 +10,7 @@ export interface CreateOrderResponse {
 export interface UpdatePaidOrderResponse {
   tickets: Ticket[];
   alreadyPaid: boolean;
+  eventReferenceId: string;
 }
 
 export interface CheckInTicketResponse {
@@ -19,6 +20,13 @@ export interface CheckInTicketResponse {
 
 export interface CreateInviteResponse {
   ticketList: [string, string][];
+}
+
+export interface UpdatePaidOrderByVerifyUrlResponse {
+  tickets: Ticket[];
+  alreadyPaid: boolean;
+  eventReferenceId: string;
+  email: string;
 }
 
 // Create order and user (or update), not yet create ticket
@@ -68,7 +76,7 @@ async function updatePaidOrder(
   fullname: string,
   email: string,
   zapReceipt: Event,
-  code: string | null
+  code: string | null,
 ): Promise<UpdatePaidOrderResponse> {
   const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
 
@@ -136,14 +144,54 @@ async function updatePaidOrder(
   );
 
   if (alreadyPaid) {
-    return { tickets: [], alreadyPaid };
+    return { tickets: [], alreadyPaid, eventReferenceId };
   }
 
   if (!order || tickets.length === 0) {
     throw new Error('Order or user not found or ticket not created');
   }
 
-  return { tickets, alreadyPaid };
+  return { tickets, alreadyPaid, eventReferenceId };
+}
+
+export async function updatePaidOrderByVerifyUrl(
+  verifyUrl: string
+): Promise<UpdatePaidOrderByVerifyUrlResponse> {
+  // 1) busca la orden junto a su usuario
+  const found = await prisma.order.findFirst({
+    where: { verifyUrl },
+    include: { User: true },
+  });
+  if (!found) throw new Error('Order not found');
+
+  const alreadyPaid = found.paid;
+  const eventReferenceId = found.eventReferenceId;
+  const email = found.User!.email;
+
+  const tickets: Ticket[] = [];
+
+  if (!alreadyPaid) {
+    // 2) marca pagado
+    const order = await prisma.order.update({
+      where: { id: found.id },
+      data: { paid: true },
+    });
+
+    // 3) crea tickets
+    for (let i = 0; i < order.ticketQuantity; i++) {
+      const ticketId = randomBytes(16).toString('hex');
+      const t = await prisma.ticket.create({
+        data: {
+          ticketId,
+          userId: order.userId!,
+          orderId: order.id,
+        },
+      });
+      tickets.push(t);
+    }
+  }
+
+  return { tickets, alreadyPaid, eventReferenceId, email };
 }
 
 async function checkInTicket(ticketId: string): Promise<CheckInTicketResponse> {

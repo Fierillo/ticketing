@@ -299,10 +299,7 @@ export default function Page() {
       try {
         const { blockValue } = await blockPrice();
         setBlockBatch(blockValue);
-<<<<<<< HEAD
-=======
         console.log('ticketPrice', TICKET.value);
->>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
       } catch (error: any) {
         console.error('Error fetching block price:', error);
       }
@@ -405,11 +402,7 @@ export default function Page() {
                         <div>
                           <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
-<<<<<<< HEAD
-                            {ticketPrice} {TICKET?.currency}
-=======
                             {TICKET?.value + blockBatch * 10} {TICKET?.currency}
->>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -461,31 +454,10 @@ export default function Page() {
                       <div className="flex gap-4 justify-between items-center">
                         <p className="text-text font-bold">Total</p>
                         <div className="text-right">
-<<<<<<< HEAD
-                          {/* Calcula aquí tus valores */}
-                          {discountMultiple !== 1 ? (
-                            <p className="font-bold text-lg flex justify-end items-baseline gap-2">
-                              {/* strikethrough price */}
-                              <span className="text-gray-400 line-through">
-                                {(totalPrice/discountMultiple).toFixed(0)}
-                              </span>
-                              {/* discounted price */}
-                              <span className="text-white">
-                                {totalPrice}{' '}SAT
-                              </span>
-                            </p>
-                          ) : (
-                            /* normal price */
-                            <p className="font-bold text-lg">
-                              {totalPrice} SAT
-                            </p>
-                          )}
-=======
                           <p className="font-bold text-lg">
                             {total}
                             {TICKET.currency}
                           </p>
->>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                           {discountMultiple !== 1 && (
                             <p className="font-semibold text-sm text-primary">
                               {' '}{((1 - discountMultiple) * 100).toFixed(0)}
@@ -517,11 +489,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-<<<<<<< HEAD
-                              {ticketPrice} {TICKET?.currency}
-=======
                               {total} {TICKET?.currency}
->>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -576,11 +544,7 @@ export default function Page() {
                       <p className="text-text font-bold">Total</p>
                       <div className="text-right">
                         <p className="font-bold text-lg">
-<<<<<<< HEAD
-                          {totalPrice}{' SAT'}
-=======
                           {total} {TICKET.currency}
->>>>>>> c0f4d3878e96a4dd0810d96b33c50e9900d6b763
                         </p>
                         {discountMultiple !== 1 && (
                           <p className="font-semibold text-sm text-primary">

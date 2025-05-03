@@ -20,6 +20,7 @@ class SESClient implements SESClientInterface {
   }
 
   async sendEmailOrder(email: string, orderId: string) {
+    console.log('Sending email to:', email);
     const html: string = `
     <!DOCTYPE html>
     <html lang="es">
