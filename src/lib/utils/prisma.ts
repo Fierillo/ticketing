@@ -10,6 +10,7 @@ export interface CreateOrderResponse {
 export interface UpdatePaidOrderResponse {
   tickets: Ticket[];
   alreadyPaid: boolean;
+  eventReferenceId: string;
 }
 
 export interface CheckInTicketResponse {
@@ -68,7 +69,7 @@ async function updatePaidOrder(
   fullname: string,
   email: string,
   zapReceipt: Event,
-  code: string | null
+  code: string | null,
 ): Promise<UpdatePaidOrderResponse> {
   const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
 
@@ -136,14 +137,14 @@ async function updatePaidOrder(
   );
 
   if (alreadyPaid) {
-    return { tickets: [], alreadyPaid };
+    return { tickets: [], alreadyPaid, eventReferenceId };
   }
 
   if (!order || tickets.length === 0) {
     throw new Error('Order or user not found or ticket not created');
   }
 
-  return { tickets, alreadyPaid };
+  return { tickets, alreadyPaid, eventReferenceId };
 }
 
 async function checkInTicket(ticketId: string): Promise<CheckInTicketResponse> {

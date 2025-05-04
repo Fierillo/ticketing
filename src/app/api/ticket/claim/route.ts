@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPublicKey, validateEvent } from 'nostr-tools';
 import * as Sentry from '@sentry/nextjs';
 import { senderPublicKey } from '@/lib/utils/nostr';
+import { prisma } from '@/services/prismaClient';
 
 interface OrderClaimResponse {
   claim: boolean;
@@ -58,18 +59,27 @@ export async function POST(req: NextRequest) {
         fullname,
         email,
         zapReceipt,
-        code || null
+        code || null,
       );
     } catch (error: any) {
       throw new AppError('Failed to update order', 500);
     }
 
+    const isNewClaim = !updateOrderResponse.alreadyPaid
+
     // AWS SES
-    if (!updateOrderResponse.alreadyPaid) {
+    if (isNewClaim) {
       try {
         for (const ticket of updateOrderResponse.tickets) {
           await ses.sendEmailOrder(email, ticket.ticketId!); // TODO: send one email with all tickets
+          console.log('Payment via NIP-57 confirmed');
         }
+        // update paid status in Prisma
+        const eventReferenceId = updateOrderResponse.eventReferenceId;
+        await prisma.order.update({
+          where: { eventReferenceId: eventReferenceId },
+          data: { paid: true }
+        });
       } catch (error: any) {
         throw new AppError('Failed to send order email', 500);
       }
@@ -77,7 +87,7 @@ export async function POST(req: NextRequest) {
 
     // Response
     const response: OrderClaimResponse = {
-      claim: true,
+      claim: isNewClaim,
     };
 
     return NextResponse.json({

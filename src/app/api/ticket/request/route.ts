@@ -13,7 +13,6 @@ import { getCodeDiscountFront } from '@/lib/utils/codes';
 import { createOrder } from '@/lib/utils/prisma';
 import {
   generateZapRequest,
-  setupPaymentListener,
   senderPublicKey,
 } from '@/lib/utils/nostr';
 
@@ -117,7 +116,6 @@ export async function POST(req: NextRequest) {
         });
         return { pr, verify };
       })(),
-      setupPaymentListener(eventReferenceId, fullname, email, apiUrl),
     ]);
 
     // 8. Return response

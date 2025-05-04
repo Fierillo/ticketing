@@ -16,8 +16,6 @@ const useCode = (): UseCodeReturn => {
   useEffect(() => {
     const codeFix = code.trim().toLowerCase();
 
-    console.log('[HOOK] code', codeFix);
-
     if (codeFix === '') {
       setDiscountMultiple(1);
       setIsLoading(false);
