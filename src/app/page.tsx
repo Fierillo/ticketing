@@ -47,7 +47,7 @@ import useCode from '@/hooks/useCode';
 import useOrder from '@/hooks/useOrder';
 import { useNostr, useSubscription } from '@lawallet/react';
 import { convertEvent } from '../lib/utils/nostr';
-import { calculateTicketPrice } from '../lib/utils/price';
+import { calculateTicketPrice, convertCurrencyToSats } from '../lib/utils/price';
 import { useRelay } from '@/hooks/useRelay';
 
 // Mock data
@@ -70,8 +70,10 @@ export default function Page() {
   const [userData, setUserData] = useState<OrderUserData | undefined>(
     undefined
   );
-  const [totalMiliSats, setTotalMiliSats] = useState<number>(0);
-  const [ticketPriceSAT, setTicketPriceSAT] = useState<number>(TICKET.value);
+  // Price
+  const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [ticketPriceFIAT, setTicketPriceFIAT] = useState<number>(TICKET.value);
+  
   const [ticketQuantity, setTicketQuantity] = useState<number>(1); // Set initial ticket quantity to 1
   const [paymentRequest, setPaymentRequest] = useState<string | undefined>(
     undefined
@@ -188,66 +190,6 @@ export default function Page() {
     events && events.length && userData && processPayment(events[0], userData);
   }, [events, userData, processPayment]);
 
-  // Process payment via LUD-21 (using with useSubscription hook form lawallet/rect)
-  // const verifyPayment = useCallback(async () => {
-  //   try {
-  //     if (!verifyUrl) {
-  //       console.warn('Verify URL not defined');
-  //       return false;
-  //     }
-
-  //     const response = await fetch(verifyUrl);
-  //     if (!response.ok) {
-  //       throw new Error('Failed to fetch verify payment');
-  //     }
-
-  //     const verificationData = await response.json();
-  //     if (!verificationData.settled) {
-  //       console.warn('Payment not verified');
-  //       return false;
-  //     }
-
-  //     console.log('====> Payment verified, starting subscription');
-  //     subscription?.start();
-
-  //     return true;
-  //   } catch (error: any) {
-  //     setOpenAlert(true);
-  //     setAlertText(error.message);
-  //     return false;
-  //   }
-  // }, [verifyUrl, subscription]);
-
-  // Interval to verify payment via LUD-21 (using with useSubscription hook form lawallet/rect)
-  // useEffect(() => {
-  //   let intervalId: NodeJS.Timeout | null = null;
-
-  //   const startVerificationInterval = () => {
-  //     if (verifyUrl && !isPaid) {
-  //       console.log('Setting up verification interval');
-  //       intervalId = setInterval(async () => {
-  //         const isVerified = await verifyPayment();
-  //         if (isVerified) {
-  //           console.log('====> Payment verified, clearing interval');
-  //           if (intervalId) {
-  //             clearInterval(intervalId);
-  //             intervalId = null;
-  //           }
-  //         }
-  //       }, 2000);
-  //     }
-  //   };
-
-  //   startVerificationInterval();
-
-  //   return () => {
-  //     if (intervalId) {
-  //       console.log('Clearing interval on cleanup');
-  //       clearInterval(intervalId);
-  //     }
-  //   };
-  // }, [verifyUrl, isPaid, verifyPayment]);
-
   // UI Button "Back to page"
   const backToPage = useCallback(() => {
     setScreen('information');
@@ -270,26 +212,25 @@ export default function Page() {
   ]);
 
   // Update ticket price calculations
-  // useEffect(() => {
-  //   const calculatePrices = async () => {
-  //     try {
-  //       // Calculate discounted price in SAT
-  //       const discountedPriceSAT = Math.round(TICKET.value * discountMultiple);
-  //       setTicketPriceSAT(discountedPriceSAT);
+  useEffect(() => {
+    const calculatePrices = async () => {
+      try {
+        // Calculate price after block increment and discount
+        const newPrice = (TICKET.value + blockBatch*10) * discountMultiple;
+        setTicketPriceFIAT(newPrice);
 
-  //       // Calculate total in ARS
-  //       const totalMiliSats = Math.round(
-  //         await calculateTicketPrice(ticketQuantity, discountedPriceSAT)
-  //       );
+        // Convert to SAT
+        const newSatPrice = await convertCurrencyToSats(TICKET.currency, newPrice);
 
-  //       setTotalMiliSats(totalMiliSats);
-  //     } catch (error: any) {
-  //       console.error('Error calculating ticket prices:', error);
-  //     }
-  //   };
+        // Calculate total in SAT
+        setTotalPrice(newSatPrice * ticketQuantity);
+      } catch (error: any) {
+        console.error('Error calculating ticket prices:', error);
+      }
+    };
 
-  //   calculatePrices();
-  // }, [ticketQuantity, discountMultiple]);
+    calculatePrices();
+  }, [ticketQuantity, discountMultiple, blockBatch, TICKET.currency]);
 
   // Change screen when payment is confirmed
   useEffect(() => {
@@ -302,7 +243,8 @@ export default function Page() {
   useEffect(() => {
     const fetchBlockPrice = async () => {
       try {
-        const { totalSold, blockValue } = await blockPrice();
+        if (TICKET?.type === 'general') return;
+        const { blockValue } = await blockPrice();
         setBlockBatch(blockValue);
         console.log('ticketPrice', TICKET.value);
       } catch (error: any) {
@@ -360,13 +302,6 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
-  const total =
-    discountMultiple === 1
-      ? (TICKET?.value + blockBatch * 10) * ticketQuantity
-      : Math.round(
-          (TICKET?.value + blockBatch * 10) * ticketQuantity * discountMultiple
-        );
-
   return (
     <>
       <div className="flex flex-col md:flex-row w-full min-h-[100dvh]">
@@ -407,7 +342,7 @@ export default function Page() {
                         <div>
                           <p>{TICKET?.title}</p>
                           <p className="font-semibold text-lg">
-                            {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+                            {ticketPriceFIAT} {TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -460,8 +395,7 @@ export default function Page() {
                         <p className="text-text font-bold">Total</p>
                         <div className="text-right">
                           <p className="font-bold text-lg">
-                            {total}
-                            {TICKET.currency}
+                            {totalPrice}{' SAT'}
                           </p>
                           {discountMultiple !== 1 && (
                             <p className="font-semibold text-sm text-primary">
@@ -494,7 +428,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {total} {TICKET?.currency}
+                              {totalPrice} {TICKET?.currency}
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -507,29 +441,6 @@ export default function Page() {
                           </div>
                         </div>
                       </Card>
-                      {/*<div className="p-4 mt-4">
-                        <div className="flex gap-4 justify-between items-center">
-                          <p className="text-text text-md">Total</p>
-                          <div className="flex flex-col text-right">
-                            <p className="font-bold text-md">
-                              {discountMultiple === 1
-                                ? (TICKET?.value + blockBatch * 10) * ticketQuantity
-                                : Math.round(
-                                    (TICKET?.value + blockBatch * 10) *
-                                      ticketQuantity *
-                                      discountMultiple
-                                  )}{' '}
-                              {TICKET.currency}
-                            </p>
-                            {discountMultiple !== 1 && (
-                              <p className="font-semibold text-sm text-primary">
-                                {((1 - discountMultiple) * 100).toFixed(0)}
-                                {'% OFF'}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>*/}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -540,7 +451,7 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+                          {ticketPriceFIAT} {TICKET?.currency}
                         </p>
                       </div>
                       <div className="flex gap-2 items-center">
@@ -556,7 +467,7 @@ export default function Page() {
                       <p className="text-text font-bold">Total</p>
                       <div className="text-right">
                         <p className="font-bold text-lg">
-                          {total} {TICKET.currency}
+                          {totalPrice}{' SAT'}
                         </p>
                         {discountMultiple !== 1 && (
                           <p className="font-semibold text-sm text-primary">

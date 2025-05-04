@@ -7,7 +7,7 @@ import { ses } from '@/services/ses';
 import { getLnurlpFromWalias, generateInvoice } from '@/services/ln';
 import { prisma } from '@/services/prismaClient';
 
-import { calculateCurrencyToSats } from '@/lib/utils/price';
+import { convertCurrencyToSats } from '@/lib/utils/price';
 import { AppError } from '@/lib/errors/appError';
 import { getCodeDiscountFront } from '@/lib/utils/codes';
 import { createOrder } from '@/lib/utils/prisma';
@@ -17,6 +17,7 @@ import {
 } from '@/lib/utils/nostr';
 
 import { TICKET } from '@/config/mock';
+import { blockPrice } from '@/lib/utils/blockPrice';
 
 let apiUrl = process.env.NEXT_PUBLIC_API_URL;
 let walias = process.env.NEXT_POS_WALIAS;
@@ -58,19 +59,21 @@ export async function POST(req: NextRequest) {
     if (!lnurlp?.callback) throw new AppError('Invalid LNURLP data', 500);
 
     // 4. Calculate total msats
-    const totalTickets = 45;
-    const blockValue =
-      TICKET?.type !== 'general' ? Math.floor(totalTickets / 21) * 10 : 0;
-
+    let blockBatch = 0;
+    if (TICKET.type !== 'general') {
+      try {
+        const { blockValue } = await blockPrice();
+        blockBatch = blockValue;
+      } catch (error: any) {
+        console.error('Error fetching block price:', error);
+      }
+    }
     const unitPrice = Number(TICKET?.value);
-    const total =
-      discount === 1
-        ? (TICKET?.value + blockValue) * ticketQuantity
-        : Math.round((TICKET?.value + blockValue) * ticketQuantity * discount);
+    const total = Number(TICKET?.value + blockBatch * 10) * ticketQuantity * discount;
 
     if (isNaN(unitPrice)) throw new AppError('Invalid ticket price', 500);
 
-    const priceInSats = await calculateCurrencyToSats(TICKET?.currency, total);
+    const priceInSats = await convertCurrencyToSats(TICKET?.currency, total);
     const totalMsats = priceInSats * 1000;
 
     // 5. Create order & (optional) subscribe to newsletter in parallel
