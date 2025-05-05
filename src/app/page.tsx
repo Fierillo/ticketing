@@ -209,28 +209,6 @@ export default function Page() {
     validateRelaysStatus,
   ]);
 
-  // Update ticket price calculations
-  // useEffect(() => {
-  //   const calculatePrices = async () => {
-  //     try {
-  //       // Calculate discounted price in SAT
-  //       const discountedPriceSAT = Math.round(TICKET.value * discountMultiple);
-  //       setTicketPriceSAT(discountedPriceSAT);
-
-  //       // Calculate total in ARS
-  //       const totalMiliSats = Math.round(
-  //         await calculateTicketPrice(ticketQuantity, discountedPriceSAT)
-  //       );
-
-  //       setTotalMiliSats(totalMiliSats);
-  //     } catch (error: any) {
-  //       console.error('Error calculating ticket prices:', error);
-  //     }
-  //   };
-
-  //   calculatePrices();
-  // }, [ticketQuantity, discountMultiple]);
-
   // Change screen when payment is confirmed
   useEffect(() => {
     if (isPaid) {
