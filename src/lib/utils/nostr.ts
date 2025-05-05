@@ -1,17 +1,4 @@
 import { Event, EventTemplate, finalizeEvent, getEventHash, getPublicKey, nip19 } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools/pool';
-import { bech32 } from 'bech32';
-
-// Relays list
-const RELAYS = [
-  'wss://relay.current.fyi',
-  'wss://nostr.wine',
-  'wss://purplepag.es',
-  'wss://relay.damus.io',
-  'wss://nostrelites.org',
-  'wss://relay.hodl.ar',
-  'wss://relay.lawallet.ar',
-];
 
 // Nostr key handling
 if (!process.env.NEXT_SIGNER_PRIVATE_KEY) {
@@ -63,67 +50,8 @@ function convertEvent(event: any): Event {
   };
 }
 
-// Configure payment listener
-async function setupPaymentListener(
-  eventReferenceId: string,
-  fullname: string,
-  email: string,
-  apiUrl: string
-): Promise<void> {
-  const pool = new SimplePool();
-
-  const sub = pool.subscribeMany(
-    RELAYS,
-    [
-      {
-        kinds: [9735],
-        '#e': [eventReferenceId],
-      },
-    ],
-    {
-      onevent: async (event: Event) => {
-        
-        try {
-          const claimResponse = await fetch(`${apiUrl}/api/ticket/claim`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              fullname,
-              email,
-              zapReceipt: event,
-            }),
-          });
-
-          const claimData = await claimResponse.json();
-          if (!claimData.status) {
-            console.error('Failed to claim payment:', claimData.errors);
-          }
-        } catch (error) {
-          console.error('Error calling claim API:', error);
-        }
-
-        sub.close();
-        pool.close(RELAYS);
-      },
-      oneose: () => {
-        console.log('Subscription closed');
-      },
-    }
-  );
-
-  // Timeout for payment listener
-  setTimeout(() => {
-    sub.close();
-    pool.close(RELAYS);
-    console.log('Payment listener timed out');
-  }, 5 * 60 * 1000); // 5 minutes
-}
-
 export {
   convertEvent,
   generateZapRequest,
-  setupPaymentListener,
   senderPublicKey,
 };
