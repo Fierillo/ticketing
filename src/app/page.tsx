@@ -188,66 +188,6 @@ export default function Page() {
     events && events.length && userData && processPayment(events[0], userData);
   }, [events, userData, processPayment]);
 
-  // Process payment via LUD-21 (using with useSubscription hook form lawallet/rect)
-  // const verifyPayment = useCallback(async () => {
-  //   try {
-  //     if (!verifyUrl) {
-  //       console.warn('Verify URL not defined');
-  //       return false;
-  //     }
-
-  //     const response = await fetch(verifyUrl);
-  //     if (!response.ok) {
-  //       throw new Error('Failed to fetch verify payment');
-  //     }
-
-  //     const verificationData = await response.json();
-  //     if (!verificationData.settled) {
-  //       console.warn('Payment not verified');
-  //       return false;
-  //     }
-
-  //     console.log('====> Payment verified, starting subscription');
-  //     subscription?.start();
-
-  //     return true;
-  //   } catch (error: any) {
-  //     setOpenAlert(true);
-  //     setAlertText(error.message);
-  //     return false;
-  //   }
-  // }, [verifyUrl, subscription]);
-
-  // Interval to verify payment via LUD-21 (using with useSubscription hook form lawallet/rect)
-  // useEffect(() => {
-  //   let intervalId: NodeJS.Timeout | null = null;
-
-  //   const startVerificationInterval = () => {
-  //     if (verifyUrl && !isPaid) {
-  //       console.log('Setting up verification interval');
-  //       intervalId = setInterval(async () => {
-  //         const isVerified = await verifyPayment();
-  //         if (isVerified) {
-  //           console.log('====> Payment verified, clearing interval');
-  //           if (intervalId) {
-  //             clearInterval(intervalId);
-  //             intervalId = null;
-  //           }
-  //         }
-  //       }, 2000);
-  //     }
-  //   };
-
-  //   startVerificationInterval();
-
-  //   return () => {
-  //     if (intervalId) {
-  //       console.log('Clearing interval on cleanup');
-  //       clearInterval(intervalId);
-  //     }
-  //   };
-  // }, [verifyUrl, isPaid, verifyPayment]);
-
   // UI Button "Back to page"
   const backToPage = useCallback(() => {
     setScreen('information');
