@@ -20,7 +20,7 @@ class SESClient implements SESClientInterface {
 
   async sendEmailOrder(email: string, orderId: string) {
     console.log('sendEmailOrder', email, orderId);
-    const subjet = 'Tu entrada para la Panchitos Party';
+    const subjet = 'Tu entrada para el Bitcoin Pizza Day';
     const date = 'Viernes 23 de Mayo';
     const time = '19:00';
 
