@@ -1,5 +1,4 @@
 // src/components/ui/block-bar.tsx
-import { blockPrice } from '@/lib/utils/blockPrice';
 import React from 'react';
 
 interface BlockBarProps {

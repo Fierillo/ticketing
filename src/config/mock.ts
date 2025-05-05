@@ -9,5 +9,5 @@ export const TICKET = {
   title: 'Entrada General',
   value: 1,
   currency: 'ARS',
-  type: 'general',
+  type: 'metal',
 };

@@ -62,12 +62,12 @@ const useOrder = (): UseOrderReturn => {
 
   // Polling LUD-21.
   useEffect(() => {
-    if (!invoice || isPaid) return
+    if (!invoice || isPaid) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch("/api/ticket/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const res = await fetch('/api/ticket/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ invoice, verify, eventReferenceId, email }),
         });
         const data = await res.json();
@@ -78,7 +78,7 @@ const useOrder = (): UseOrderReturn => {
       } catch {
         //
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [invoice, isPaid]);

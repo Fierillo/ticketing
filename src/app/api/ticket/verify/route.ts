@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if (settled) {
       console.log('Payment is settled, updating order status');
       // Get current order status before update
-      const { currentOrder, updatedOrder } = await prisma.$transaction(
+      const { wasUpdated, updatedOrder } = await prisma.$transaction(
         async () => {
           const currentOrder = await prisma.order.findUnique({
             where: { eventReferenceId },
@@ -70,6 +70,11 @@ export async function POST(request: Request) {
             throw new Error('Order not found before update');
           }
 
+          if (currentOrder.paid) {
+            console.log(`Order already paid: ${eventReferenceId}`);
+            return { wasUpdated: false, updatedOrder: currentOrder };
+          }
+
           // Update order in Prisma
           const updatedOrder = await prisma.order.update({
             where: { eventReferenceId },
@@ -80,15 +85,11 @@ export async function POST(request: Request) {
             },
           });
 
-          return { currentOrder, updatedOrder };
+          return { wasUpdated: true, updatedOrder };
         }
       );
 
-      // Check if the value actually changed
-      const wasUpdated = currentOrder.paid !== updatedOrder.paid;
-      console.log(
-        `Order payment status changed: ${wasUpdated} (from ${currentOrder.paid} to ${updatedOrder.paid})`
-      );
+      console.log(`Order payment status changed to paid`);
 
       if (!wasUpdated) {
         console.log(
@@ -104,8 +105,8 @@ export async function POST(request: Request) {
       console.log(`Sending confirmation email to: ${email}`);
       await ses.sendEmailOrder(email, eventReferenceId);
       console.log('Payment via LUD-21 confirmed');
+      return NextResponse.json({ settled }, { status: 200 });
     }
-    return NextResponse.json({ settled });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

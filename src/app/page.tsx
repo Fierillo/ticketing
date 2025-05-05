@@ -28,7 +28,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 
 import { cn } from '@/lib/utils';
 
@@ -47,15 +47,13 @@ import useCode from '@/hooks/useCode';
 import useOrder from '@/hooks/useOrder';
 import { useNostr, useSubscription } from '@lawallet/react';
 import { convertEvent } from '../lib/utils/nostr';
-import { calculateTicketPrice } from '../lib/utils/price';
-import { useRelay } from '@/hooks/useRelay';
 
 // Mock data
 import { EVENT, TICKET } from '@/config/mock';
-import { blockPrice } from '@/lib/utils/blockPrice';
 import { BlockBar } from '@/components/ui/block-bar';
+import { useTicketCount } from '@/hooks/use-ticket-count';
 
-const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
+const BLOCK_INTERVAL = 21;
 
 export default function Page() {
   // Block Price
@@ -70,8 +68,6 @@ export default function Page() {
   const [userData, setUserData] = useState<OrderUserData | undefined>(
     undefined
   );
-  const [totalMiliSats, setTotalMiliSats] = useState<number>(0);
-  const [ticketPriceSAT, setTicketPriceSAT] = useState<number>(TICKET.value);
   const [ticketQuantity, setTicketQuantity] = useState<number>(1); // Set initial ticket quantity to 1
   const [paymentRequest, setPaymentRequest] = useState<string | undefined>(
     undefined
@@ -79,8 +75,7 @@ export default function Page() {
   const [eventReferenceId, setEventReferenceId] = useState<string | undefined>(
     undefined
   );
-  const [verifyUrl, setVerifyUrl] = useState<string | undefined>(undefined);
-  const [maxTicketsReached, setMaxTicketsReached] = useState<boolean>(false);
+  const { maxTicketsReached, totalTickets } = useTicketCount();
 
   // Hooks
   const { isPaid, requestNewOrder, claimOrderPayment, clear } = useOrder();
@@ -131,7 +126,6 @@ export default function Page() {
         // validateRelaysStatus();
         setPaymentRequest(pr);
         setEventReferenceId(eventReferenceId);
-        setVerifyUrl(verify);
 
         window.scrollTo({
           top: 0,
@@ -185,8 +179,12 @@ export default function Page() {
   );
 
   useEffect(() => {
-    events && events.length && userData && processPayment(events[0], userData);
-  }, [events, userData, processPayment]);
+    events &&
+      events.length &&
+      userData &&
+      !isPaid &&
+      processPayment(events[0], userData);
+  }, [events, userData, processPayment, isPaid]);
 
   // UI Button "Back to page"
   const backToPage = useCallback(() => {
@@ -194,7 +192,6 @@ export default function Page() {
     setEventReferenceId(undefined);
     setTicketQuantity(1);
     setPaymentRequest(undefined);
-    setVerifyUrl(undefined);
     setCode('');
     setUserData(undefined);
     clear();
@@ -216,53 +213,10 @@ export default function Page() {
     }
   }, [isPaid]);
 
-  // Fetch block price
   useEffect(() => {
-    const fetchBlockPrice = async () => {
-      try {
-        const { totalSold, blockValue } = await blockPrice();
-        setBlockBatch(blockValue);
-        console.log('ticketPrice', TICKET.value);
-      } catch (error: any) {
-        console.error('Error fetching block price:', error);
-      }
-    };
-
-    TICKET?.type !== 'general' && fetchBlockPrice();
-  }, []);
-
-  // Check total tickets in the database on component mount
-  useEffect(() => {
-    const checkTickets = async () => {
-      try {
-        const response = await fetch('/api/ticket/count', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`${errorData.errors || response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (response.ok) {
-          if (data.data.totalTickets >= MAX_TICKETS) {
-            setMaxTicketsReached(true);
-          }
-        } else {
-          console.error('Failed to fetch total tickets:', data.error);
-        }
-      } catch (error) {
-        console.error('Error fetching total tickets:', error);
-      }
-    };
-
-    checkTickets();
-  }, []);
+    console.log('totalTickets', totalTickets);
+    setBlockBatch(Math.floor(totalTickets / BLOCK_INTERVAL));
+  }, [totalTickets]);
 
   useEffect(() => {
     const verifyRelaysConnection = (): void => {
