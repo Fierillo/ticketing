@@ -32,7 +32,7 @@ export const TicketCountProvider = ({
     checkTicketsStatus();
 
     // Set up interval to check every 5 seconds
-    const intervalId = setInterval(checkTicketsStatus, 2000);
+    const intervalId = setInterval(checkTicketsStatus, 5000);
 
     // Cleanup function
     return () => {
