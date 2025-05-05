@@ -51,62 +51,64 @@ export async function POST(request: Request) {
     const { settled } = (await res.json()) as { settled: boolean };
     console.log(`Payment settled status: ${settled}`);
 
-    if (settled) {
-      console.log('Payment is settled, updating order status');
-      // Get current order status before update
-      const { wasUpdated, updatedOrder } = await prisma.$transaction(
-        async () => {
-          const currentOrder = await prisma.order.findUnique({
-            where: { eventReferenceId },
-            select: {
-              paid: true,
-            },
-          });
-
-          if (!currentOrder) {
-            console.log(
-              `Order not found during transaction: ${eventReferenceId}`
-            );
-            throw new Error('Order not found before update');
-          }
-
-          if (currentOrder.paid) {
-            console.log(`Order already paid: ${eventReferenceId}`);
-            return { wasUpdated: false, updatedOrder: currentOrder };
-          }
-
-          // Update order in Prisma
-          const updatedOrder = await prisma.order.update({
-            where: { eventReferenceId },
-            data: { paid: true },
-            select: {
-              paid: true,
-              eventReferenceId: true,
-            },
-          });
-
-          return { wasUpdated: true, updatedOrder };
-        }
+    if (!settled) {
+      console.log('Payment is not settled, returning 202');
+      return NextResponse.json(
+        { error: 'Payment not settled', settled },
+        { status: 202 }
       );
+    }
 
-      console.log(`Order payment status changed to paid`);
+    console.log('Payment is settled, updating order status');
+    // Get current order status before update
+    const { wasUpdated, updatedOrder } = await prisma.$transaction(async () => {
+      const currentOrder = await prisma.order.findUnique({
+        where: { eventReferenceId },
+        select: {
+          paid: true,
+        },
+      });
 
-      if (!wasUpdated) {
-        console.log(
-          'Order payment status was not changed, already in desired state'
-        );
-        return NextResponse.json(
-          { error: 'Order payment status not changed' },
-          { status: 400 }
-        );
+      if (!currentOrder) {
+        console.log(`Order not found during transaction: ${eventReferenceId}`);
+        throw new Error('Order not found before update');
       }
 
-      // If verified, send email to client
-      console.log(`Sending confirmation email to: ${email}`);
-      await ses.sendEmailOrder(email, eventReferenceId);
-      console.log('Payment via LUD-21 confirmed');
-      return NextResponse.json({ settled }, { status: 200 });
+      if (currentOrder.paid) {
+        console.log(`Order already paid: ${eventReferenceId}`);
+        return { wasUpdated: false, updatedOrder: currentOrder };
+      }
+
+      // Update order in Prisma
+      const updatedOrder = await prisma.order.update({
+        where: { eventReferenceId },
+        data: { paid: true },
+        select: {
+          paid: true,
+          eventReferenceId: true,
+        },
+      });
+
+      return { wasUpdated: true, updatedOrder };
+    });
+
+    console.log(`Order payment status changed to paid`);
+
+    if (!wasUpdated) {
+      console.log(
+        'Order payment status was not changed, already in desired state'
+      );
+      return NextResponse.json(
+        { error: 'Order payment status not changed' },
+        { status: 400 }
+      );
     }
+
+    // If verified, send email to client
+    console.log(`Sending confirmation email to: ${email}`);
+    await ses.sendEmailOrder(email, eventReferenceId);
+    console.log('Payment via LUD-21 confirmed');
+    return NextResponse.json({ settled }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

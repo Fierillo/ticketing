@@ -57,7 +57,7 @@ const BLOCK_INTERVAL = 21;
 
 export default function Page() {
   // Block Price
-  const [blockBatch, setBlockBatch] = useState<number>(0);
+  const [blockBatch, setBlockBatch] = useState<number | null>(null);
   // Flow
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -214,8 +214,9 @@ export default function Page() {
   }, [isPaid]);
 
   useEffect(() => {
-    console.log('totalTickets', totalTickets);
-    setBlockBatch(Math.floor(totalTickets / BLOCK_INTERVAL));
+    console.log('super totalTickets', totalTickets);
+    totalTickets !== null &&
+      setBlockBatch(Math.floor(totalTickets / BLOCK_INTERVAL));
   }, [totalTickets]);
 
   useEffect(() => {
@@ -232,12 +233,14 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
-  const total =
-    discountMultiple === 1
+  const total = useMemo(() => {
+    if (blockBatch === null) return 21000000000;
+    return discountMultiple === 1
       ? (TICKET?.value + blockBatch * 10) * ticketQuantity
       : Math.round(
           (TICKET?.value + blockBatch * 10) * ticketQuantity * discountMultiple
         );
+  }, [discountMultiple, blockBatch, ticketQuantity]);
 
   return (
     <>
@@ -278,8 +281,14 @@ export default function Page() {
                       <div className="flex justify-between items-center gap-4">
                         <div>
                           <p>{TICKET?.title}</p>
+
                           <p className="font-semibold text-lg">
-                            {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+                            {blockBatch === null
+                              ? 'Cargando...'
+                              : TICKET?.value +
+                                blockBatch * 10 +
+                                ' ' +
+                                TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -323,27 +332,29 @@ export default function Page() {
                           </div>
                         )}
                       </div>
-                      {TICKET?.type !== 'general' && (
+                      {TICKET?.type !== 'general' && blockBatch !== null && (
                         <BlockBar totalSquares={5} filled={blockBatch} />
                       )}
                     </Card>
-                    <div className="p-4 bg-black bg-opacity-85 mt-4">
-                      <div className="flex gap-4 justify-between items-center">
-                        <p className="text-text font-bold">Total</p>
-                        <div className="text-right">
-                          <p className="font-bold text-lg">
-                            {total}
-                            {TICKET.currency}
-                          </p>
-                          {discountMultiple !== 1 && (
-                            <p className="font-semibold text-sm text-primary">
-                              {((1 - discountMultiple) * 100).toFixed(0)}
-                              {'% OFF'}
+                    {blockBatch !== null && (
+                      <div className="p-4 bg-black bg-opacity-85 mt-4">
+                        <div className="flex gap-4 justify-between items-center">
+                          <p className="text-text font-bold">Total</p>
+                          <div className="text-right">
+                            <p className="font-bold text-lg">
+                              {total}
+                              {TICKET.currency}
                             </p>
-                          )}
+                            {discountMultiple !== 1 && (
+                              <p className="font-semibold text-sm text-primary">
+                                {((1 - discountMultiple) * 100).toFixed(0)}
+                                {'% OFF'}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
               </>
@@ -412,10 +423,11 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+                          {blockBatch === null
+                            ? 'Cargando...'
+                            : TICKET?.value + blockBatch * 10}{' '}
+                          {TICKET?.currency}
                         </p>
-                      </div>
-                      <div className="flex gap-2 items-center">
                         <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
                           <span className="font-normal text-text">x</span>
                           {ticketQuantity}

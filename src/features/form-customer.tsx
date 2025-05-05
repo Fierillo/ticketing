@@ -30,7 +30,7 @@ export function FormCustomer({
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [codeStatus, setCodeStatus] = useState<string>(''); // 'valid', 'invalid', or 'loading'
-  const { maxTicketsReached } = useTicketCount();
+  const { maxTicketsReached, totalTickets } = useTicketCount();
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
@@ -151,7 +151,11 @@ export function FormCustomer({
                   </div>
                 </div>
               </div>
-              <Button type="submit" disabled={loading || maxTicketsReached}>
+
+              <Button
+                type="submit"
+                disabled={loading || maxTicketsReached || totalTickets === null}
+              >
                 {loading ? 'Generando ticket' : 'Reservar'}
               </Button>
             </form>
