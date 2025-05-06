@@ -297,6 +297,26 @@ async function getTicket(id: string): Promise<Ticket | null> {
   }
 }
 
+// Function to get tickets
+async function getTickets(): Promise<Ticket[] | null> {
+  try {
+    const ticket = await prisma.ticket.findMany({
+      include: {
+        User: {
+          select: {
+            fullname: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return ticket;
+  } catch (error) {
+    return null;
+  }
+}
+
 export {
   checkInTicket,
   countTotalTickets,
@@ -304,4 +324,5 @@ export {
   createOrder,
   updatePaidOrder,
   getTicket,
+  getTickets,
 };
