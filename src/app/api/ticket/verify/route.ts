@@ -1,65 +1,67 @@
 import { validateEmail } from '@/lib/utils';
+import { getTicket } from '@/lib/utils/prisma';
 import { prisma } from '@/services/prismaClient';
 import { ses } from '@/services/ses';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    console.log('Starting POST request to /api/ticket/verify');
+    // console.log('Starting POST request to /api/ticket/verify');
 
     const { eventReferenceId, email } = (await request.json()) as {
       eventReferenceId: string;
       email: string;
     };
-    console.log(
-      `Received request with eventReferenceId: ${eventReferenceId} and email: ${email}`
-    );
+    // console.log(
+    // `Received request with eventReferenceId: ${eventReferenceId} and email: ${email}`
+    // );
 
     if (!validateEmail(email)) {
-      console.log(`Invalid email format: ${email}`);
+      // console.log(`Invalid email format: ${email}`);
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
     }
 
     // get order from eventReferenceId
-    console.log(`Looking up order with eventReferenceId: ${eventReferenceId}`);
+    // console.log(`Looking up order with eventReferenceId: ${eventReferenceId}`);
     const order = await prisma.order.findUnique({
       where: { eventReferenceId },
       select: {
+        id: true,
         verifyUrl: true,
         paid: true,
       },
     });
 
     if (!order) {
-      console.log(`Order not found for eventReferenceId: ${eventReferenceId}`);
+      // console.log(`Order not found for eventReferenceId: ${eventReferenceId}`);
       throw new Error('Order not found');
     }
 
     if (!order.verifyUrl) {
-      console.log(`Verify URL not found for order: ${eventReferenceId}`);
+      // console.log(`Verify URL not found for order: ${eventReferenceId}`);
       throw new Error('Verify URL not found');
     }
 
-    console.log(`Fetching payment status from: ${order.verifyUrl}`);
+    // console.log(`Fetching payment status from: ${order.verifyUrl}`);
     const res = await fetch(order.verifyUrl);
 
     if (!res.ok) {
-      console.log(`LUD-21 verification failed with status: ${res.status}`);
+      // console.log(`LUD-21 verification failed with status: ${res.status}`);
       return NextResponse.json({ error: 'Error en LUD-21' }, { status: 402 });
     }
 
     const { settled } = (await res.json()) as { settled: boolean };
-    console.log(`Payment settled status: ${settled}`);
+    // console.log(`Payment settled status: ${settled}`);
 
     if (!settled) {
-      console.log('Payment is not settled, returning 202');
+      // console.log('Payment is not settled, returning 202');
       return NextResponse.json(
         { error: 'Payment not settled', settled },
         { status: 202 }
       );
     }
 
-    console.log('Payment is settled, updating order status');
+    // console.log('Payment is settled, updating order status');
     // Get current order status before update
     const { wasUpdated, updatedOrder } = await prisma.$transaction(async () => {
       const currentOrder = await prisma.order.findUnique({
@@ -70,12 +72,12 @@ export async function POST(request: Request) {
       });
 
       if (!currentOrder) {
-        console.log(`Order not found during transaction: ${eventReferenceId}`);
+        // console.log(`Order not found during transaction: ${eventReferenceId}`);
         throw new Error('Order not found before update');
       }
 
       if (currentOrder.paid) {
-        console.log(`Order already paid: ${eventReferenceId}`);
+        // console.log(`Order already paid: ${eventReferenceId}`);
         return { wasUpdated: false, updatedOrder: currentOrder };
       }
 
@@ -92,12 +94,12 @@ export async function POST(request: Request) {
       return { wasUpdated: true, updatedOrder };
     });
 
-    console.log(`Order payment status changed to paid`);
+    // console.log(`Order payment status changed to paid`);
 
     if (!wasUpdated) {
-      console.log(
-        'Order payment status was not changed, already in desired state'
-      );
+      // console.log(
+      // 'Order payment status was not changed, already in desired state'
+      // );
       return NextResponse.json(
         { error: 'Order payment status not changed' },
         { status: 400 }
@@ -105,9 +107,9 @@ export async function POST(request: Request) {
     }
 
     // If verified, send email to client
-    console.log(`Sending confirmation email to: ${email}`);
+    // console.log(`Sending confirmation email to: ${email}`);
     await ses.sendEmailOrder(email, eventReferenceId);
-    console.log('Payment via LUD-21 confirmed');
+    // console.log('Payment via LUD-21 confirmed');
     return NextResponse.json({ settled }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
