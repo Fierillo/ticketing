@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     if (!lnurlp?.callback) throw new AppError('Invalid LNURLP data', 500);
 
     // Consultar la cantidad total de tickets
-    const totalTickets = await countTotalTickets();
+    const totalTickets = await countTotalTickets(TICKET.type);
 
     const unitPrice = Number(TICKET?.value);
     const blockValue =
