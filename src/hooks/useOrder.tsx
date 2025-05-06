@@ -63,7 +63,7 @@ const useOrder = (): UseOrderReturn => {
   // Polling LUD-21.
   useEffect(() => {
     if (!invoice || isPaid) return;
-    alert('PERDONAMEEEE!');
+    // alert('PERDONAMEEEE!');
     const interval = setInterval(async () => {
       try {
         const res = await fetch('/api/ticket/verify', {
