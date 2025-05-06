@@ -5,7 +5,8 @@ import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  throw new Error('Not implemented');
+  return NextResponse.json({ error: 'Not implemented' });
+
   const paidOrders = await prisma.order.findMany({
     where: {
       paid: true,
