@@ -300,9 +300,17 @@ async function createInvite(
 }
 
 // Function to count total tickets in the database
-async function countTotalTickets(): Promise<number> {
-  const count = await prisma.ticket.count();
-  return count;
+async function countTotalTickets(type: string): Promise<number> {
+  const lastTicket = await prisma.ticket.findFirst({
+    where: {
+      type: type,
+    },
+    orderBy: {
+      serial: 'desc',
+    },
+  });
+
+  return lastTicket ? lastTicket.serial : 0;
 }
 
 // Function to get ticket in the database by id
