@@ -215,8 +215,7 @@ export default function Page() {
 
   useEffect(() => {
     console.log('super totalTickets', totalTickets);
-    totalTickets !== null &&
-      setBlockBatch(Math.floor(totalTickets / BLOCK_INTERVAL));
+    totalTickets !== null && setBlockBatch(Math.floor(totalTickets / 21));
   }, [totalTickets]);
 
   useEffect(() => {
@@ -235,12 +234,14 @@ export default function Page() {
 
   const total = useMemo(() => {
     if (blockBatch === null) return 21000000000;
-    return discountMultiple === 1
-      ? (TICKET?.value + blockBatch * 10) * ticketQuantity
-      : Math.round(
-          (TICKET?.value + blockBatch * 10) * ticketQuantity * discountMultiple
-        );
-  }, [discountMultiple, blockBatch, ticketQuantity]);
+
+    const blockValue = TICKET?.type === 'general' ? 0 : blockBatch;
+    const unitPrice = Number(TICKET?.value);
+
+    return Math.round(
+      (unitPrice + Number(blockValue * 10)) * ticketQuantity * discountMultiple
+    );
+  }, [discountMultiple, blockBatch, ticketQuantity, totalTickets]);
 
   return (
     <>
@@ -333,7 +334,10 @@ export default function Page() {
                         )}
                       </div>
                       {TICKET?.type !== 'general' && blockBatch !== null && (
-                        <BlockBar totalSquares={5} filled={blockBatch} />
+                        <BlockBar
+                          totalSquares={5}
+                          filled={Math.floor(Number(totalTickets || 0) / 21)}
+                        />
                       )}
                     </Card>
                     {blockBatch !== null && (
