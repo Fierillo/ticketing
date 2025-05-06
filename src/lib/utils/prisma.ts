@@ -234,7 +234,7 @@ async function updatePaidOrder21(
           serial: 'desc',
         },
       });
-      let currentSerial = lastTicket ? lastTicket.serial : -1;
+      let currentSerial = lastTicket ? lastTicket.serial : 0;
 
       for (let i = 0; i < order.ticketQuantity; i++) {
         const ticketId: string = randomBytes(16).toString('hex');
