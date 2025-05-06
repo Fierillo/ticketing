@@ -80,9 +80,9 @@ async function updatePaidOrder21(
   type: string
 ): Promise<UpdatePaidOrderResponse21> {
   const { order, tickets, alreadyPaid } = await prisma.$transaction(
-    async () => {
+    async (tx) => {
       // Get unpaid order
-      const existingOrder = await prisma.order.findUnique({
+      const existingOrder = await tx.order.findUnique({
         where: { eventReferenceId },
         select: { paid: true, id: true, userId: true },
       });
@@ -102,7 +102,7 @@ async function updatePaidOrder21(
       }
       // Update order to paid
 
-      const order: Order = await prisma.order.update({
+      const order: Order = await tx.order.update({
         where: { eventReferenceId },
         data: {
           paid: true,
@@ -110,7 +110,7 @@ async function updatePaidOrder21(
       });
 
       if (code) {
-        await prisma.code.upsert({
+        await tx.code.upsert({
           where: { code },
           update: {
             used: {
@@ -129,7 +129,7 @@ async function updatePaidOrder21(
       let tickets: Ticket[] = [];
 
       // Get the current greatest serial number
-      const lastTicket = await prisma.ticket.findFirst({
+      const lastTicket = await tx.ticket.findFirst({
         where: {
           type: type,
         },
@@ -142,7 +142,7 @@ async function updatePaidOrder21(
       for (let i = 0; i < order.ticketQuantity; i++) {
         const ticketId: string = randomBytes(16).toString('hex');
 
-        const ticket: Ticket | null = await prisma.ticket.create({
+        const ticket: Ticket | null = await tx.ticket.create({
           data: {
             ticketId,
             userId: existingOrder.userId,
@@ -173,9 +173,9 @@ async function updatePaidOrder21(
 async function checkInTicket(ticketId: string): Promise<CheckInTicketResponse> {
   const { alreadyCheckedIn, checkIn } = await prisma.$transaction(
     // To Do: optimize this query with conditional update
-    async () => {
+    async (tx) => {
       // Find ticket
-      const ticket: Ticket | null = await prisma.ticket.findUnique({
+      const ticket: Ticket | null = await tx.ticket.findUnique({
         where: {
           ticketId,
         },
@@ -195,7 +195,7 @@ async function checkInTicket(ticketId: string): Promise<CheckInTicketResponse> {
       }
 
       // Update ticket to checked in
-      const ticketChecked: Ticket = await prisma.ticket.update({
+      const ticketChecked: Ticket = await tx.ticket.update({
         where: {
           ticketId,
         },
@@ -225,14 +225,14 @@ async function createInvite(
   action: string,
   list: [string, string][]
 ): Promise<CreateInviteResponse> {
-  const { ticketList } = await prisma.$transaction(async (prisma) => {
+  const { ticketList } = await prisma.$transaction(async (tx) => {
     let ticketList: [string, string][] = [];
 
     if (action === 'add') {
       for (const [fullname, email] of list) {
         console.log(fullname, email);
         // Create user
-        const user = await prisma.user.upsert({
+        const user = await tx.user.upsert({
           where: {
             email,
           },
@@ -250,7 +250,7 @@ async function createInvite(
         // Create ticket for the user
         const ticketId: string = randomBytes(16).toString('hex');
 
-        const ticket: Ticket = await prisma.ticket.create({
+        const ticket: Ticket = await tx.ticket.create({
           data: {
             ticketId,
             userId: user.id,
