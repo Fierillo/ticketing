@@ -84,7 +84,7 @@ const useOrder = (): UseOrderReturn => {
       } catch {
         //
       }
-    }, 3000);
+    }, 1200);
 
     return () => clearInterval(interval);
   }, [invoice, isPaid, code]);
