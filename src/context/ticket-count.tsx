@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { checkTickets } from '@/lib/utils/tickets';
+import { countTotalTickets } from '@/lib/utils/prisma';
 
 export interface TicketCountContextType {
   maxTicketsReached: boolean;
@@ -10,6 +11,8 @@ export const TicketCountContext = createContext<TicketCountContextType>({
   maxTicketsReached: false,
   totalTickets: null,
 });
+
+const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
 
 export const TicketCountProvider = ({
   children,
@@ -23,8 +26,10 @@ export const TicketCountProvider = ({
     // Initial check
     const checkTicketsStatus = async () => {
       console.info('Checking tickets status...');
-      const { ticketsReached, totalTickets } = await checkTickets();
-      setMaxTicketsReached(ticketsReached);
+
+      const totalTickets = await countTotalTickets();
+
+      setMaxTicketsReached(totalTickets >= MAX_TICKETS);
       setTotalTickets(totalTickets);
     };
 
