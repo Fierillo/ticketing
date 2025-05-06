@@ -5,4 +5,4 @@ export const EVENT = {
   imageUrl: '',
 };
 
-export const TICKET = JSON.parse(process.env.TICKET || '{}');
+export const TICKET = JSON.parse(process.env.NEXT_PUBLIC_TICKET || '{}');
