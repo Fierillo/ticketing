@@ -5,9 +5,4 @@ export const EVENT = {
   imageUrl: '',
 };
 
-export const TICKET = {
-  title: 'Ticket General',
-  value: 15,
-  currency: 'USD',
-  type: 'general',
-};
+export const TICKET = JSON.parse(process.env.TICKET || '{}');
