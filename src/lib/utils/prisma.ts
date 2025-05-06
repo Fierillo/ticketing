@@ -132,6 +132,14 @@ async function updatePaidOrder57(
       // Create tickets
       let tickets: Ticket[] = [];
 
+      // Get the current greatest serial number
+      const lastTicket = await prisma.ticket.findFirst({
+        orderBy: {
+          serial: 'desc',
+        },
+      });
+      const currentSerial = lastTicket ? lastTicket.serial : 0;
+
       for (let i = 0; i < order.ticketQuantity; i++) {
         const ticketId: string = randomBytes(16).toString('hex');
 
@@ -217,6 +225,17 @@ async function updatePaidOrder21(
       // Create tickets
       let tickets: Ticket[] = [];
 
+      // Get the current greatest serial number
+      const lastTicket = await prisma.ticket.findFirst({
+        where: {
+          type: type,
+        },
+        orderBy: {
+          serial: 'desc',
+        },
+      });
+      let currentSerial = lastTicket ? lastTicket.serial : -1;
+
       for (let i = 0; i < order.ticketQuantity; i++) {
         const ticketId: string = randomBytes(16).toString('hex');
 
@@ -225,6 +244,7 @@ async function updatePaidOrder21(
             ticketId,
             userId: existingOrder.userId,
             orderId: existingOrder.id,
+            serial: ++currentSerial,
             type,
           },
         });
