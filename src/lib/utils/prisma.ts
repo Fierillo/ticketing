@@ -1,3 +1,5 @@
+'use server';
+
 import { prisma } from '@/services/prismaClient';
 import { Order, Ticket, User } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -69,7 +71,7 @@ async function updatePaidOrder(
   fullname: string,
   email: string,
   zapReceipt: Event,
-  code: string | null,
+  code: string | null
 ): Promise<UpdatePaidOrderResponse> {
   const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
 
@@ -280,10 +282,26 @@ async function countTotalTickets(): Promise<number> {
   return count;
 }
 
+// Function to get ticket in the database by id
+async function getTicket(id: string): Promise<Ticket | null> {
+  try {
+    const ticket = await prisma.ticket.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    return ticket;
+  } catch (error) {
+    return null;
+  }
+}
+
 export {
   checkInTicket,
   countTotalTickets,
   createInvite,
   createOrder,
   updatePaidOrder,
+  getTicket,
 };
