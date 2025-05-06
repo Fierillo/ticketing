@@ -1,20 +1,19 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+
+import { Button } from '../ui/button';
 import {
   DropdownMenu,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
 } from '../ui/dropdown-menu';
 
 export type TicketInfo = {
-  user: {
+  User: {
     fullname: string;
     email: string;
   };
@@ -23,63 +22,66 @@ export type TicketInfo = {
 };
 
 export const createColumns = (
-  handleCheckIn: (ticketId: string) => void,
-  handleEmailTicket: (ticketId: string) => void
+  handleCheckIn: (ticketId: string) => void
 ): ColumnDef<TicketInfo>[] => [
   {
+    accessorKey: 'checkIn',
+    header: ({ column }) => {
+      return (
+        <button
+          className="flex items-center gap-2"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          <ArrowUpDown className="h-4 w-4" />
+        </button>
+      );
+    },
+    cell: ({ row }) => (
+      <div
+        className={`w-4 h-4 rounded-full ${row.original.checkIn ? 'bg-primary' : 'bg-gray-800'}`}
+      ></div>
+    ),
+  },
+  {
     accessorKey: 'ticketId',
-    header: 'Ticket ID',
+    header: 'ID',
+    cell: ({ row }) => (
+      <div>
+        {row.original.ticketId.slice(0, 4)}...{row.original.ticketId.slice(-4)}
+      </div>
+    ),
   },
   {
     accessorKey: 'user',
     header: ({ column }) => {
       return (
-        <Button
-          variant="ghost"
+        <button
+          className="flex items-center gap-2"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
           User
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          <ArrowUpDown className="h-4 w-4" />
+        </button>
       );
     },
     cell: ({ row }) => (
       <div>
-        <div>{row.original.user.fullname}</div>
-        <div className="text-sm text-gray-500">{row.original.user.email}</div>
+        <div>{row.original.User.fullname}</div>
+        <div className="text-sm text-gray-500">{row.original.User.email}</div>
       </div>
     ),
     sortingFn: (a, b) => {
-      const nameA = a.original.user.fullname.toLowerCase();
-      const nameB = b.original.user.fullname.toLowerCase();
+      const nameA = a.original.User.fullname.toLowerCase();
+      const nameB = b.original.User.fullname.toLowerCase();
 
       if (nameA < nameB) return -1;
       if (nameA > nameB) return 1;
 
-      const emailA = a.original.user.email.toLowerCase();
-      const emailB = b.original.user.email.toLowerCase();
+      const emailA = a.original.User.email.toLowerCase();
+      const emailB = b.original.User.email.toLowerCase();
 
       return emailA.localeCompare(emailB);
     },
-  },
-  {
-    accessorKey: 'checkIn',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Check-In
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => (
-      <Badge variant={row.original.checkIn ? 'default' : 'destructive'}>
-        {row.original.checkIn ? 'Checked In' : 'Not Checked In'}
-      </Badge>
-    ),
   },
   {
     id: 'actions',
@@ -88,7 +90,7 @@ export const createColumns = (
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button variant="secondary" className="h-8 w-8 p-0">
               <span className="sr-only">Open menu</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -100,12 +102,6 @@ export const createColumns = (
             >
               Copy ticket ID
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleEmailTicket(order.ticketId)}
-            >
-              Email Ticket
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => handleCheckIn(order.ticketId)}
               disabled={order.checkIn}
