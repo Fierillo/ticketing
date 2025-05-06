@@ -16,6 +16,7 @@ interface UseOrderReturn {
     zapReceiptEvent: Event
   ) => Promise<OrderClaimReturn>;
   clear: () => void;
+  setCode: (code: string) => void;
 }
 
 const useOrder = (): UseOrderReturn => {
@@ -24,6 +25,7 @@ const useOrder = (): UseOrderReturn => {
   const [eventReferenceId, setEventReferenceId] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [code, setCode] = useState<string>('');
 
   // Call API/ticket/request to fetch invoice, verify and eventReferenceId.
   const requestNewOrder = useCallback(
@@ -63,13 +65,16 @@ const useOrder = (): UseOrderReturn => {
   // Polling LUD-21.
   useEffect(() => {
     if (!invoice || isPaid) return;
-    // alert('PERDONAMEEEE!');
     const interval = setInterval(async () => {
       try {
         const res = await fetch('/api/ticket/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ invoice, verify, eventReferenceId, email }),
+          body: JSON.stringify({
+            eventReferenceId,
+            code,
+            email,
+          }),
         });
         const data = await res.json();
         if (data.settled) {
@@ -82,7 +87,7 @@ const useOrder = (): UseOrderReturn => {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [invoice, isPaid]);
+  }, [invoice, isPaid, code]);
 
   // Restart everything.
   const clear = useCallback(() => {
@@ -106,6 +111,7 @@ const useOrder = (): UseOrderReturn => {
       };
       console.log('claimOrderPayment params', body);
 
+      throw new Error('Not implemented');
       const response = await fetch(`/api/ticket/claim`, {
         method: 'POST',
         headers: {
@@ -136,6 +142,7 @@ const useOrder = (): UseOrderReturn => {
   };
 
   return {
+    setCode,
     isPaid,
     claimOrderPayment,
     requestNewOrder,

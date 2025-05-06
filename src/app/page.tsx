@@ -78,13 +78,28 @@ export default function Page() {
   const { maxTicketsReached, totalTickets } = useTicketCount();
 
   // Hooks
-  const { isPaid, requestNewOrder, claimOrderPayment, clear } = useOrder();
+  const {
+    isPaid,
+    requestNewOrder,
+    claimOrderPayment,
+    clear,
+    setCode: setOrderCode,
+  } = useOrder();
+
   const {
     discountMultiple,
     code,
     isLoading: isCodeLoading,
-    setCode,
+    setCode: setHookCode,
   } = useCode();
+
+  const setCode = useCallback(
+    (code: string) => {
+      setOrderCode(code);
+      setHookCode(code);
+    },
+    [setOrderCode, setHookCode]
+  );
 
   // Memoize filters to prevent unnecessary re-renders
   const filters = useMemo(
@@ -94,11 +109,13 @@ export default function Page() {
 
   // Nostr
   const { validateRelaysStatus } = useNostr();
-  const { events } = useSubscription({
-    filters,
-    options: { closeOnEose: false },
-    enabled: Boolean(eventReferenceId),
-  });
+  const events: Event[] = useMemo(() => [], []);
+  // const { events } = useSubscription({
+  //   filters,
+  //   options: { closeOnEose: false },
+  //   enabled: Boolean(eventReferenceId),
+  // });
+
   // const { events, relay, clearEvents } = useRelay({
   //   relayUrl: 'wss://relay.lawallet.ar',
   //   filters,
@@ -151,41 +168,13 @@ export default function Page() {
     ]
   );
 
-  // Process payment via nostr event
-  const processPayment = useCallback(
-    async (_event: any, _userData: OrderUserData) => {
-      try {
-        const event: Event = convertEvent(_event);
-
-        if (!event) {
-          console.warn('Event not defined ');
-          return;
-        }
-
-        if (!_userData) {
-          console.warn('User data not defined ');
-          return;
-        }
-
-        await claimOrderPayment(_userData, event);
-
-        setUserData(undefined);
-      } catch (error: any) {
-        // setOpenAlert(true);
-        // setAlertText(error.message);
-        console.log('error', error);
-      }
-    },
-    [claimOrderPayment]
-  );
-
-  useEffect(() => {
-    events &&
-      events.length &&
-      userData &&
-      !isPaid &&
-      processPayment(events[0], userData);
-  }, [events, userData, processPayment, isPaid]);
+  // useEffect(() => {
+  //   events &&
+  //     events.length &&
+  //     userData &&
+  //     !isPaid &&
+  //     processPayment(events[0], userData);
+  // }, [events, userData, processPayment, isPaid]);
 
   // UI Button "Back to page"
   const backToPage = useCallback(() => {

@@ -1,28 +1,27 @@
-import { validateEmail } from '@/lib/utils';
-import { getTicket } from '@/lib/utils/prisma';
+import {
+  updatePaidOrder21,
+  UpdatePaidOrderResponse21,
+} from '@/lib/utils/prisma';
 import { prisma } from '@/services/prismaClient';
 import { ses } from '@/services/ses';
 import { NextResponse } from 'next/server';
 
+import { TICKET } from '@/config/mock';
+
 export async function POST(request: Request) {
   try {
-    // console.log('Starting POST request to /api/ticket/verify');
-
-    const { eventReferenceId, email } = (await request.json()) as {
+    console.log('Starting POST request to /api/ticket/verify');
+    const { eventReferenceId, code, email } = (await request.json()) as {
       eventReferenceId: string;
+      code: string;
       email: string;
     };
-    // console.log(
-    // `Received request with eventReferenceId: ${eventReferenceId} and email: ${email}`
-    // );
-
-    if (!validateEmail(email)) {
-      // console.log(`Invalid email format: ${email}`);
-      return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
-    }
+    console.log(
+      `Received request with eventReferenceId: ${eventReferenceId} and email: ${email}`
+    );
 
     // get order from eventReferenceId
-    // console.log(`Looking up order with eventReferenceId: ${eventReferenceId}`);
+    console.log(`Looking up order with eventReferenceId: ${eventReferenceId}`);
     const order = await prisma.order.findUnique({
       where: { eventReferenceId },
       select: {
@@ -33,77 +32,79 @@ export async function POST(request: Request) {
     });
 
     if (!order) {
-      // console.log(`Order not found for eventReferenceId: ${eventReferenceId}`);
+      console.log(`Order not found for eventReferenceId: ${eventReferenceId}`);
       throw new Error('Order not found');
     }
 
+    if (order.paid) {
+      console.log(
+        `Order already paid for eventReferenceId: ${eventReferenceId}`
+      );
+      return NextResponse.json({ settled: true }, { status: 200 });
+    }
+
     if (!order.verifyUrl) {
-      // console.log(`Verify URL not found for order: ${eventReferenceId}`);
+      console.log(`Verify URL not found for order: ${eventReferenceId}`);
       throw new Error('Verify URL not found');
     }
 
-    // console.log(`Fetching payment status from: ${order.verifyUrl}`);
+    console.log(`Fetching payment status from: ${order.verifyUrl}`);
     const res = await fetch(order.verifyUrl);
 
     if (!res.ok) {
-      // console.log(`LUD-21 verification failed with status: ${res.status}`);
+      console.log(`LUD-21 verification failed with status: ${res.status}`);
       return NextResponse.json({ error: 'Error en LUD-21' }, { status: 402 });
     }
 
     const { settled } = (await res.json()) as { settled: boolean };
-    // console.log(`Payment settled status: ${settled}`);
+    console.log(`Payment settled status: ${settled}`);
 
     if (!settled) {
-      // console.log('Payment is not settled, returning 202');
+      console.log('Payment is not settled, returning 202');
       return NextResponse.json(
         { error: 'Payment not settled', settled },
         { status: 202 }
       );
     }
 
-    // console.log('Payment is settled, updating order status');
-    // Get current order status before update
-    const { wasUpdated, updatedOrder } = await prisma.$transaction(async () => {
-      const currentOrder = await prisma.order.findUnique({
-        where: { eventReferenceId },
-        select: {
-          paid: true,
-        },
-      });
-
-      if (!currentOrder) {
-        // console.log(`Order not found during transaction: ${eventReferenceId}`);
-        throw new Error('Order not found before update');
-      }
-
-      if (currentOrder.paid) {
-        // console.log(`Order already paid: ${eventReferenceId}`);
-        return { wasUpdated: false, updatedOrder: currentOrder };
-      }
-
-      // Update order in Prisma
-      const updatedOrder = await prisma.order.update({
-        where: { eventReferenceId },
-        data: { paid: true },
-        select: {
-          paid: true,
-          eventReferenceId: true,
-        },
-      });
-
-      return { wasUpdated: true, updatedOrder };
-    });
-
-    // console.log(`Order payment status changed to paid`);
-
-    if (!wasUpdated) {
-      return NextResponse.json({ settled }, { status: 201 });
+    // Prisma
+    let updateOrderResponse: UpdatePaidOrderResponse21;
+    try {
+      updateOrderResponse = await updatePaidOrder21(
+        eventReferenceId,
+        code || null,
+        TICKET.type || 'general'
+      );
+    } catch (error: any) {
+      return NextResponse.json(
+        { error: 'Couldnt update order' },
+        { status: 400 }
+      );
     }
 
-    // If verified, send email to client
-    // console.log(`Sending confirmation email to: ${email}`);
-    await ses.sendEmailOrder(email, eventReferenceId);
-    // console.log('Payment via LUD-21 confirmed');
+    if (updateOrderResponse.alreadyPaid) {
+      return NextResponse.json({ settled: true }, { status: 200 });
+    }
+
+    // Check if there are tickets to send
+    if (updateOrderResponse?.tickets.length > 0) {
+      try {
+        for (const ticket of updateOrderResponse.tickets) {
+          await ses.sendEmailOrder(email, ticket.ticketId!); // TODO: send one email with all tickets
+          console.log('Payment via NIP-57 confirmed');
+        }
+      } catch (error: any) {
+        return NextResponse.json(
+          {
+            reason: 'Error at sending emails',
+            message: (error as Error).message,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    console.log('Payment via LUD-21 confirmed');
     return NextResponse.json({ settled }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

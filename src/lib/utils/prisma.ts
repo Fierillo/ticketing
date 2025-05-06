@@ -9,7 +9,13 @@ export interface CreateOrderResponse {
   eventReferenceId: string;
 }
 
-export interface UpdatePaidOrderResponse {
+export interface UpdatePaidOrderResponse57 {
+  tickets: Ticket[];
+  alreadyPaid: boolean;
+  eventReferenceId: string;
+}
+
+export interface UpdatePaidOrderResponse21 {
   tickets: Ticket[];
   alreadyPaid: boolean;
   eventReferenceId: string;
@@ -67,12 +73,13 @@ async function createOrder(
   return response;
 }
 
-async function updatePaidOrder(
+// NIP-57
+async function updatePaidOrder57(
   fullname: string,
   email: string,
   zapReceipt: Event,
   code: string | null
-): Promise<UpdatePaidOrderResponse> {
+): Promise<UpdatePaidOrderResponse57> {
   const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
 
   const { order, user, tickets, alreadyPaid } = await prisma.$transaction(
@@ -103,12 +110,17 @@ async function updatePaidOrder(
       });
 
       if (code) {
-        await prisma.code.update({
+        await prisma.code.upsert({
           where: { code },
-          data: {
+          update: {
             used: {
               increment: 1,
             },
+          },
+          create: {
+            code,
+            used: 1,
+            discount: 0,
           },
         });
       }
@@ -128,6 +140,7 @@ async function updatePaidOrder(
             ticketId,
             userId: order.userId,
             orderId: order.id,
+            type: 'general',
           },
         });
 
@@ -135,6 +148,91 @@ async function updatePaidOrder(
       }
 
       return { order, user, tickets, alreadyPaid: false };
+    }
+  );
+
+  if (alreadyPaid) {
+    return { tickets: [], alreadyPaid, eventReferenceId };
+  }
+
+  if (!order || tickets.length === 0) {
+    throw new Error('Order or user not found or ticket not created');
+  }
+
+  return { tickets, alreadyPaid, eventReferenceId };
+}
+
+// LUD-21
+async function updatePaidOrder21(
+  eventReferenceId: string,
+  code: string | null,
+  type: string
+): Promise<UpdatePaidOrderResponse21> {
+  const { order, tickets, alreadyPaid } = await prisma.$transaction(
+    async () => {
+      // Get unpaid order
+      const existingOrder = await prisma.order.findUnique({
+        where: { eventReferenceId },
+        select: { paid: true, id: true, userId: true },
+      });
+
+      if (!existingOrder) {
+        console.log('Order not found');
+        throw new Error('Order not found');
+      }
+
+      if (existingOrder.paid) {
+        console.log('Order already paid');
+        return { order: null, tickets: [], alreadyPaid: true };
+      }
+
+      if (!existingOrder.userId) {
+        throw new Error('User not found');
+      }
+      // Update order to paid
+
+      const order: Order = await prisma.order.update({
+        where: { eventReferenceId },
+        data: {
+          paid: true,
+        },
+      });
+
+      if (code) {
+        await prisma.code.upsert({
+          where: { code },
+          update: {
+            used: {
+              increment: 1,
+            },
+          },
+          create: {
+            code,
+            used: 1,
+            discount: 0,
+          },
+        });
+      }
+
+      // Create tickets
+      let tickets: Ticket[] = [];
+
+      for (let i = 0; i < order.ticketQuantity; i++) {
+        const ticketId: string = randomBytes(16).toString('hex');
+
+        const ticket: Ticket | null = await prisma.ticket.create({
+          data: {
+            ticketId,
+            userId: existingOrder.userId,
+            orderId: existingOrder.id,
+            type,
+          },
+        });
+
+        tickets.push(ticket);
+      }
+
+      return { order, tickets, alreadyPaid: false };
     }
   );
 
@@ -234,6 +332,7 @@ async function createInvite(
             ticketId,
             userId: user.id,
             orderId: null,
+            type: 'general',
           },
         });
 
@@ -322,7 +421,8 @@ export {
   countTotalTickets,
   createInvite,
   createOrder,
-  updatePaidOrder,
+  updatePaidOrder57,
+  updatePaidOrder21,
   getTicket,
   getTickets,
 };
