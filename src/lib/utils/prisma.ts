@@ -73,103 +73,6 @@ async function createOrder(
   return response;
 }
 
-// NIP-57
-async function updatePaidOrder57(
-  fullname: string,
-  email: string,
-  zapReceipt: Event,
-  code: string | null
-): Promise<UpdatePaidOrderResponse57> {
-  const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
-
-  const { order, user, tickets, alreadyPaid } = await prisma.$transaction(
-    async () => {
-      // Check if order is already paid
-      const existingOrder = await prisma.order.findUnique({
-        where: { eventReferenceId },
-        select: { paid: true },
-      });
-
-      if (existingOrder?.paid) {
-        return { order: null, user: null, tickets: [], alreadyPaid: true };
-      }
-
-      // Update order to paid
-      const order: Order | null = await prisma.order.update({
-        where: { eventReferenceId },
-        data: {
-          paid: true,
-          zapReceiptId: zapReceipt.id,
-        },
-      });
-
-      // Update the user in case their name changes
-      const user: User | null = await prisma.user.update({
-        where: { email },
-        data: { fullname },
-      });
-
-      if (code) {
-        await prisma.code.upsert({
-          where: { code },
-          update: {
-            used: {
-              increment: 1,
-            },
-          },
-          create: {
-            code,
-            used: 1,
-            discount: 0,
-          },
-        });
-      }
-
-      if (!order || !order.userId) {
-        throw new Error('Order or user not found, cannot create ticket');
-      }
-
-      // Create tickets
-      let tickets: Ticket[] = [];
-
-      // Get the current greatest serial number
-      const lastTicket = await prisma.ticket.findFirst({
-        orderBy: {
-          serial: 'desc',
-        },
-      });
-      const currentSerial = lastTicket ? lastTicket.serial : 0;
-
-      for (let i = 0; i < order.ticketQuantity; i++) {
-        const ticketId: string = randomBytes(16).toString('hex');
-
-        const ticket: Ticket | null = await prisma.ticket.create({
-          data: {
-            ticketId,
-            userId: order.userId,
-            orderId: order.id,
-            type: 'general',
-          },
-        });
-
-        tickets.push(ticket);
-      }
-
-      return { order, user, tickets, alreadyPaid: false };
-    }
-  );
-
-  if (alreadyPaid) {
-    return { tickets: [], alreadyPaid, eventReferenceId };
-  }
-
-  if (!order || tickets.length === 0) {
-    throw new Error('Order or user not found or ticket not created');
-  }
-
-  return { tickets, alreadyPaid, eventReferenceId };
-}
-
 // LUD-21
 async function updatePaidOrder21(
   eventReferenceId: string,
@@ -353,6 +256,7 @@ async function createInvite(
             userId: user.id,
             orderId: null,
             type: 'general',
+            serial: 0,
           },
         });
 
@@ -441,7 +345,6 @@ export {
   countTotalTickets,
   createInvite,
   createOrder,
-  updatePaidOrder57,
   updatePaidOrder21,
   getTicket,
   getTickets,
