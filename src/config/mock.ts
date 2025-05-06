@@ -6,8 +6,8 @@ export const EVENT = {
 };
 
 export const TICKET = {
-  title: 'Entrada General',
-  value: 1,
-  currency: 'ARS',
+  title: 'Ticket General',
+  value: 15,
+  currency: 'USD',
   type: 'general',
 };
