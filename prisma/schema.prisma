@@ -44,6 +44,7 @@ model Ticket {
     ticketId String? @unique // for check in
     checkIn  Boolean @default(false)
     serial   Int     @default(autoincrement()) @unique
+    type     String  @default("general")
 
     // Relations
     userId  String
