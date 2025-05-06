@@ -10,11 +10,8 @@ import { prisma } from '@/services/prismaClient';
 import { convertCurrencyToSats } from '@/lib/utils/price';
 import { AppError } from '@/lib/errors/appError';
 import { getCodeDiscountFront } from '@/lib/utils/codes';
-import { createOrder } from '@/lib/utils/prisma';
-import {
-  generateZapRequest,
-  senderPublicKey,
-} from '@/lib/utils/nostr';
+import { countTotalTickets, createOrder } from '@/lib/utils/prisma';
+import { generateZapRequest, senderPublicKey } from '@/lib/utils/nostr';
 
 import { TICKET } from '@/config/mock';
 
@@ -57,16 +54,15 @@ export async function POST(req: NextRequest) {
     ]);
     if (!lnurlp?.callback) throw new AppError('Invalid LNURLP data', 500);
 
-    // 4. Calculate total msats
-    const totalTickets = 45;
-    const blockValue =
-      TICKET?.type !== 'general' ? Math.floor(totalTickets / 21) * 10 : 0;
+    // Consultar la cantidad total de tickets
+    const totalTickets = await countTotalTickets();
 
     const unitPrice = Number(TICKET?.value);
-    const total =
-      discount === 1
-        ? (TICKET?.value + blockValue) * ticketQuantity
-        : Math.round((TICKET?.value + blockValue) * ticketQuantity * discount);
+    const blockValue =
+      TICKET?.type === 'general' ? 0 : Math.floor(totalTickets / 21);
+    const total = Math.round(
+      (unitPrice + Number(blockValue * 10)) * ticketQuantity * discount
+    );
 
     if (isNaN(unitPrice)) throw new AppError('Invalid ticket price', 500);
 

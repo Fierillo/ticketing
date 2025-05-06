@@ -16,6 +16,7 @@ interface UseOrderReturn {
     zapReceiptEvent: Event
   ) => Promise<OrderClaimReturn>;
   clear: () => void;
+  setCode: (code: string) => void;
 }
 
 const useOrder = (): UseOrderReturn => {
@@ -24,8 +25,9 @@ const useOrder = (): UseOrderReturn => {
   const [eventReferenceId, setEventReferenceId] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [code, setCode] = useState<string>('');
 
-  // call API/ticket/request to fetch invoice, verify and eventReferenceId
+  // Call API/ticket/request to fetch invoice, verify and eventReferenceId.
   const requestNewOrder = useCallback(
     async (data: OrderRequestData): Promise<OrderRequestReturn> => {
       setEmail(data.email);
@@ -60,15 +62,19 @@ const useOrder = (): UseOrderReturn => {
     [setIsPaid]
   );
 
-  // Polling LUD-21
+  // Polling LUD-21.
   useEffect(() => {
-    if (!invoice || isPaid) return
+    if (!invoice || isPaid) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch("/api/ticket/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoice, verify, eventReferenceId, email }),
+        const res = await fetch('/api/ticket/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventReferenceId,
+            code,
+            email,
+          }),
         });
         const data = await res.json();
         if (data.settled) {
@@ -78,17 +84,19 @@ const useOrder = (): UseOrderReturn => {
       } catch {
         //
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, [invoice, isPaid]);
+  }, [invoice, isPaid, code]);
 
+  // Restart everything.
   const clear = useCallback(() => {
     setIsPaid(false);
     setInvoice(null);
     setVerify(null);
   }, []);
 
+  // NIP-57 validation.
   const claimOrderPayment = async (
     data: OrderUserData,
     zapReceiptEvent: Event
@@ -103,6 +111,7 @@ const useOrder = (): UseOrderReturn => {
       };
       console.log('claimOrderPayment params', body);
 
+      throw new Error('Not implemented');
       const response = await fetch(`/api/ticket/claim`, {
         method: 'POST',
         headers: {
@@ -133,6 +142,7 @@ const useOrder = (): UseOrderReturn => {
   };
 
   return {
+    setCode,
     isPaid,
     claimOrderPayment,
     requestNewOrder,

@@ -4,7 +4,6 @@ import {
   SendEmailCommandInput,
 } from '@aws-sdk/client-sesv2';
 import { SESClientInterface } from '../types/ses';
-import { EVENT } from '@/config/mock';
 
 class SESClient implements SESClientInterface {
   private client: SESv2Client;
@@ -20,14 +19,18 @@ class SESClient implements SESClientInterface {
   }
 
   async sendEmailOrder(email: string, orderId: string) {
-    console.log('Sending email to:', email);
+    console.log('sendEmailOrder', email, orderId);
+    const subjet = 'Tu entrada para el Bitcoin Pizza Day';
+    const date = 'Viernes 23 de Mayo';
+    const time = '19:00';
+
     const html: string = `
     <!DOCTYPE html>
     <html lang="es">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${EVENT.emailTitle}</title>
+        <title>${subjet}</title>
         <style>
           body {
             font-family: Arial, sans-serif;
@@ -115,8 +118,8 @@ class SESClient implements SESClientInterface {
           <div class="logo-container">
             <img src='https://raw.githubusercontent.com/lacrypta/branding/main/iso/isologo-white.png' alt='la-crypta-logo'>
           </div>
-          <h1>${EVENT.emailTitle}</h1>
-          <p>Te esperamos en: <br>📍 ${EVENT.location} <br>📅 ${EVENT.date}</p>
+          <h1>${subjet}</h1>
+          <p>Te esperamos en: <br>📍 Villanueva 1367, Belgrano, CABA. <br>📅 ${date}<br>⏰ A partir de las ${time} hs.</p>
           <div class="qr-code">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${orderId}" alt="QR Code">
           </div>
@@ -142,7 +145,7 @@ class SESClient implements SESClientInterface {
       Content: {
         Simple: {
           Subject: {
-            Data: EVENT.emailSubject,
+            Data: subjet,
           },
           Body: {
             Html: {
@@ -157,7 +160,7 @@ class SESClient implements SESClientInterface {
 
     return await this.client.send(command);
   }
- 
+
   async sendEmailNewsletter(email: string) {
     const html: string = `
     <!DOCTYPE html>

@@ -1,16 +1,5 @@
 import { Event, EventTemplate, finalizeEvent, getEventHash, getPublicKey, nip19 } from 'nostr-tools';
 
-// Relays list
-const RELAYS = [
-  'wss://relay.current.fyi',
-  'wss://nostr.wine',
-  'wss://purplepag.es',
-  'wss://relay.damus.io',
-  'wss://nostrelites.org',
-  'wss://relay.hodl.ar',
-  'wss://relay.lawallet.ar',
-];
-
 // Nostr key handling
 if (!process.env.NEXT_SIGNER_PRIVATE_KEY) {
   throw new Error('NEXT_NOSTR_PRIVATE_KEY environment variable is not set');

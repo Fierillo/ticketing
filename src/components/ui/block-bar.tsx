@@ -1,5 +1,4 @@
 // src/components/ui/block-bar.tsx
-import { blockPrice } from '@/lib/utils/blockPrice';
 import React from 'react';
 
 interface BlockBarProps {
@@ -44,7 +43,7 @@ export function BlockBar({ totalSquares, filled, gapPx = 8 }: BlockBarProps) {
       </div>
       <div className="flex gap-1 justify-end w-full text-xs text-orange-400 font-bold">
         <span>Bloque</span>
-        <span>#{filled}</span>
+        <span>{filled === 0 ? 'Génesis' : '#' + filled}</span>
       </div>
     </div>
   );

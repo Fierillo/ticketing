@@ -28,7 +28,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 
 import { cn } from '@/lib/utils';
 
@@ -47,19 +47,17 @@ import useCode from '@/hooks/useCode';
 import useOrder from '@/hooks/useOrder';
 import { useNostr, useSubscription } from '@lawallet/react';
 import { convertEvent } from '../lib/utils/nostr';
-import { calculateTicketPrice, convertCurrencyToSats } from '../lib/utils/price';
-import { useRelay } from '@/hooks/useRelay';
 
 // Mock data
 import { EVENT, TICKET } from '@/config/mock';
-import { blockPrice } from '@/lib/utils/blockPrice';
 import { BlockBar } from '@/components/ui/block-bar';
+import { useTicketCount } from '@/hooks/use-ticket-count';
 
-const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
+const BLOCK_INTERVAL = 21;
 
 export default function Page() {
   // Block Price
-  const [blockBatch, setBlockBatch] = useState<number>(0);
+  const [blockBatch, setBlockBatch] = useState<number | null>(null);
   // Flow
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -70,8 +68,6 @@ export default function Page() {
   const [userData, setUserData] = useState<OrderUserData | undefined>(
     undefined
   );
-  const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [ticketPrice, setTicketPrice] = useState<number>(TICKET.value);
   const [ticketQuantity, setTicketQuantity] = useState<number>(1); // Set initial ticket quantity to 1
   const [paymentRequest, setPaymentRequest] = useState<string | undefined>(
     undefined
@@ -79,12 +75,31 @@ export default function Page() {
   const [eventReferenceId, setEventReferenceId] = useState<string | undefined>(
     undefined
   );
-  const [verifyUrl, setVerifyUrl] = useState<string | undefined>(undefined);
-  const [maxTicketsReached, setMaxTicketsReached] = useState<boolean>(false);
+  const { maxTicketsReached, totalTickets } = useTicketCount();
 
   // Hooks
-  const { isPaid, requestNewOrder, claimOrderPayment, clear } = useOrder();
-  const { discountMultiple,code, isLoading: isCodeLoading, setCode } = useCode();
+  const {
+    isPaid,
+    requestNewOrder,
+    claimOrderPayment,
+    clear,
+    setCode: setOrderCode,
+  } = useOrder();
+
+  const {
+    discountMultiple,
+    code,
+    isLoading: isCodeLoading,
+    setCode: setHookCode,
+  } = useCode();
+
+  const setCode = useCallback(
+    (code: string) => {
+      setOrderCode(code);
+      setHookCode(code);
+    },
+    [setOrderCode, setHookCode]
+  );
 
   // Memoize filters to prevent unnecessary re-renders
   const filters = useMemo(
@@ -94,11 +109,13 @@ export default function Page() {
 
   // Nostr
   const { validateRelaysStatus } = useNostr();
-  const { events } = useSubscription({
-    filters,
-    options: { closeOnEose: false },
-    enabled: Boolean(eventReferenceId),
-  });
+  const events: Event[] = useMemo(() => [], []);
+  // const { events } = useSubscription({
+  //   filters,
+  //   options: { closeOnEose: false },
+  //   enabled: Boolean(eventReferenceId),
+  // });
+
   // const { events, relay, clearEvents } = useRelay({
   //   relayUrl: 'wss://relay.lawallet.ar',
   //   filters,
@@ -126,7 +143,6 @@ export default function Page() {
         // validateRelaysStatus();
         setPaymentRequest(pr);
         setEventReferenceId(eventReferenceId);
-        setVerifyUrl(verify);
 
         window.scrollTo({
           top: 0,
@@ -152,96 +168,13 @@ export default function Page() {
     ]
   );
 
-  // Process payment via nostr event
-  const processPayment = useCallback(
-    async (_event: any, _userData: OrderUserData) => {
-      try {
-        const event: Event = convertEvent(_event);
-
-        if (!event) {
-          console.warn('Event not defined ');
-          return;
-        }
-
-        if (!_userData) {
-          console.warn('User data not defined ');
-          return;
-        }
-
-        await claimOrderPayment(_userData, event);
-
-        setUserData(undefined);
-      } catch (error: any) {
-        setOpenAlert(true);
-        setAlertText(error.message);
-      }
-    },
-    [claimOrderPayment]
-  );
-
-  useEffect(() => {
-    events && events.length && userData && processPayment(events[0], userData);
-  }, [events, userData, processPayment]);
-
-  // Process payment via LUD-21 (using with useSubscription hook form lawallet/rect)
-  // const verifyPayment = useCallback(async () => {
-  //   try {
-  //     if (!verifyUrl) {
-  //       console.warn('Verify URL not defined');
-  //       return false;
-  //     }
-
-  //     const response = await fetch(verifyUrl);
-  //     if (!response.ok) {
-  //       throw new Error('Failed to fetch verify payment');
-  //     }
-
-  //     const verificationData = await response.json();
-  //     if (!verificationData.settled) {
-  //       console.warn('Payment not verified');
-  //       return false;
-  //     }
-
-  //     console.log('====> Payment verified, starting subscription');
-  //     subscription?.start();
-
-  //     return true;
-  //   } catch (error: any) {
-  //     setOpenAlert(true);
-  //     setAlertText(error.message);
-  //     return false;
-  //   }
-  // }, [verifyUrl, subscription]);
-
-  // Interval to verify payment via LUD-21 (using with useSubscription hook form lawallet/rect)
   // useEffect(() => {
-  //   let intervalId: NodeJS.Timeout | null = null;
-
-  //   const startVerificationInterval = () => {
-  //     if (verifyUrl && !isPaid) {
-  //       console.log('Setting up verification interval');
-  //       intervalId = setInterval(async () => {
-  //         const isVerified = await verifyPayment();
-  //         if (isVerified) {
-  //           console.log('====> Payment verified, clearing interval');
-  //           if (intervalId) {
-  //             clearInterval(intervalId);
-  //             intervalId = null;
-  //           }
-  //         }
-  //       }, 2000);
-  //     }
-  //   };
-
-  //   startVerificationInterval();
-
-  //   return () => {
-  //     if (intervalId) {
-  //       console.log('Clearing interval on cleanup');
-  //       clearInterval(intervalId);
-  //     }
-  //   };
-  // }, [verifyUrl, isPaid, verifyPayment]);
+  //   events &&
+  //     events.length &&
+  //     userData &&
+  //     !isPaid &&
+  //     processPayment(events[0], userData);
+  // }, [events, userData, processPayment, isPaid]);
 
   // UI Button "Back to page"
   const backToPage = useCallback(() => {
@@ -249,7 +182,6 @@ export default function Page() {
     setEventReferenceId(undefined);
     setTicketQuantity(1);
     setPaymentRequest(undefined);
-    setVerifyUrl(undefined);
     setCode('');
     setUserData(undefined);
     clear();
@@ -264,28 +196,6 @@ export default function Page() {
     validateRelaysStatus,
   ]);
 
-  // Update ticket price calculations
-  useEffect(() => {
-    const calculatePrices = async () => {
-      try {
-        // 1. (base price + block increase) * discount
-        const ticketPrice = (TICKET.value + blockBatch * 10) * discountMultiple
-        setTicketPrice(ticketPrice)
-  
-        // 2. turn fiat price to sats
-        const satsPerTicket = await convertCurrencyToSats(ticketPrice, 'USD')
-  
-        // 3. calculate total price
-        const totalSats = satsPerTicket * ticketQuantity
-        setTotalPrice(totalSats)
-      } catch (err: any) {
-        console.error('Error calculando precios:', err)
-      }
-    }
-  
-    calculatePrices()
-  }, [ticketQuantity, discountMultiple, blockBatch])
-
   // Change screen when payment is confirmed
   useEffect(() => {
     if (isPaid && screen === 'payment') {
@@ -293,53 +203,10 @@ export default function Page() {
     }
   }, [isPaid]);
 
-  // Fetch block price
   useEffect(() => {
-    const fetchBlockPrice = async () => {
-      try {
-        const { blockValue } = await blockPrice();
-        setBlockBatch(blockValue);
-        console.log('ticketPrice', TICKET.value);
-      } catch (error: any) {
-        console.error('Error fetching block price:', error);
-      }
-    };
-
-    TICKET?.type !== 'general' && fetchBlockPrice();
-  }, []);
-
-  // Check total tickets in the database on component mount
-  useEffect(() => {
-    const checkTickets = async () => {
-      try {
-        const response = await fetch('/api/ticket/count', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`${errorData.errors || response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (response.ok) {
-          if (data.data.totalTickets >= MAX_TICKETS) {
-            setMaxTicketsReached(true);
-          }
-        } else {
-          console.error('Failed to fetch total tickets:', data.error);
-        }
-      } catch (error) {
-        console.error('Error fetching total tickets:', error);
-      }
-    };
-
-    checkTickets();
-  }, []);
+    console.log('super totalTickets', totalTickets);
+    totalTickets !== null && setBlockBatch(Math.floor(totalTickets / 21));
+  }, [totalTickets]);
 
   useEffect(() => {
     const verifyRelaysConnection = (): void => {
@@ -355,12 +222,16 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
-  const total =
-    discountMultiple === 1
-      ? (TICKET?.value + blockBatch * 10) * ticketQuantity
-      : Math.round(
-          (TICKET?.value + blockBatch * 10) * ticketQuantity * discountMultiple
-        );
+  const total = useMemo(() => {
+    if (blockBatch === null) return 21000000000;
+
+    const blockValue = TICKET?.type === 'general' ? 0 : blockBatch;
+    const unitPrice = Number(TICKET?.value);
+
+    return Math.round(
+      (unitPrice + Number(blockValue * 10)) * ticketQuantity * discountMultiple
+    );
+  }, [discountMultiple, blockBatch, ticketQuantity, totalTickets]);
 
   return (
     <>
@@ -401,8 +272,14 @@ export default function Page() {
                       <div className="flex justify-between items-center gap-4">
                         <div>
                           <p>{TICKET?.title}</p>
+
                           <p className="font-semibold text-lg">
-                            {TICKET?.value + blockBatch * 10} {TICKET?.currency}
+                            {blockBatch === null
+                              ? 'Cargando...'
+                              : TICKET?.value +
+                                blockBatch * 10 +
+                                ' ' +
+                                TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -446,27 +323,32 @@ export default function Page() {
                           </div>
                         )}
                       </div>
-                      {TICKET?.type !== 'general' && (
-                        <BlockBar totalSquares={5} filled={blockBatch} />
+                      {TICKET?.type !== 'general' && blockBatch !== null && (
+                        <BlockBar
+                          totalSquares={5}
+                          filled={Math.floor(Number(totalTickets || 0) / 21)}
+                        />
                       )}
                     </Card>
-                    <div className="p-4 bg-black bg-opacity-85 mt-4">
-                      <div className="flex gap-4 justify-between items-center">
-                        <p className="text-text font-bold">Total</p>
-                        <div className="text-right">
-                          <p className="font-bold text-lg">
-                            {total}
-                            {TICKET.currency}
-                          </p>
-                          {discountMultiple !== 1 && (
-                            <p className="font-semibold text-sm text-primary">
-                              {' '}{((1 - discountMultiple) * 100).toFixed(0)}
-                              {'% OFF'}
+                    {blockBatch !== null && (
+                      <div className="p-4 bg-black bg-opacity-85 mt-4">
+                        <div className="flex gap-4 justify-between items-center">
+                          <p className="text-text font-bold">Total</p>
+                          <div className="text-right">
+                            <p className="font-bold text-lg">
+                              {total}
+                              {TICKET.currency}
                             </p>
-                          )}
+                            {discountMultiple !== 1 && (
+                              <p className="font-semibold text-sm text-primary">
+                                {((1 - discountMultiple) * 100).toFixed(0)}
+                                {'% OFF'}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
               </>
@@ -528,10 +410,11 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {ticketPrice} {TICKET?.currency}
+                          {blockBatch === null
+                            ? 'Cargando...'
+                            : TICKET?.value + blockBatch * 10}{' '}
+                          {TICKET?.currency}
                         </p>
-                      </div>
-                      <div className="flex gap-2 items-center">
                         <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
                           <span className="font-normal text-text">x</span>
                           {ticketQuantity}

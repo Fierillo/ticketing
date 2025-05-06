@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 import {
   ColumnDef,
   flexRender,
@@ -8,7 +10,6 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-
 import {
   Table,
   TableBody,
@@ -17,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import React from 'react';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];

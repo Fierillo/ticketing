@@ -1,3 +1,5 @@
+'use server';
+
 import { prisma } from '@/services/prismaClient';
 import { Order, Ticket, User } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -7,7 +9,13 @@ export interface CreateOrderResponse {
   eventReferenceId: string;
 }
 
-export interface UpdatePaidOrderResponse {
+export interface UpdatePaidOrderResponse57 {
+  tickets: Ticket[];
+  alreadyPaid: boolean;
+  eventReferenceId: string;
+}
+
+export interface UpdatePaidOrderResponse21 {
   tickets: Ticket[];
   alreadyPaid: boolean;
   eventReferenceId: string;
@@ -72,12 +80,13 @@ async function createOrder(
   return response;
 }
 
-async function updatePaidOrder(
+// NIP-57
+async function updatePaidOrder57(
   fullname: string,
   email: string,
   zapReceipt: Event,
-  code: string | null,
-): Promise<UpdatePaidOrderResponse> {
+  code: string | null
+): Promise<UpdatePaidOrderResponse57> {
   const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
 
   const { order, user, tickets, alreadyPaid } = await prisma.$transaction(
@@ -108,12 +117,17 @@ async function updatePaidOrder(
       });
 
       if (code) {
-        await prisma.code.update({
+        await prisma.code.upsert({
           where: { code },
-          data: {
+          update: {
             used: {
               increment: 1,
             },
+          },
+          create: {
+            code,
+            used: 1,
+            discount: 0,
           },
         });
       }
@@ -133,6 +147,7 @@ async function updatePaidOrder(
             ticketId,
             userId: order.userId,
             orderId: order.id,
+            type: 'general',
           },
         });
 
@@ -154,44 +169,89 @@ async function updatePaidOrder(
   return { tickets, alreadyPaid, eventReferenceId };
 }
 
-export async function updatePaidOrderByVerifyUrl(
-  verifyUrl: string
-): Promise<UpdatePaidOrderByVerifyUrlResponse> {
-  // 1) busca la orden junto a su usuario
-  const found = await prisma.order.findFirst({
-    where: { verifyUrl },
-    include: { User: true },
-  });
-  if (!found) throw new Error('Order not found');
+// LUD-21
+async function updatePaidOrder21(
+  eventReferenceId: string,
+  code: string | null,
+  type: string
+): Promise<UpdatePaidOrderResponse21> {
+  const { order, tickets, alreadyPaid } = await prisma.$transaction(
+    async () => {
+      // Get unpaid order
+      const existingOrder = await prisma.order.findUnique({
+        where: { eventReferenceId },
+        select: { paid: true, id: true, userId: true },
+      });
 
-  const alreadyPaid = found.paid;
-  const eventReferenceId = found.eventReferenceId;
-  const email = found.User!.email;
+      if (!existingOrder) {
+        console.log('Order not found');
+        throw new Error('Order not found');
+      }
 
-  const tickets: Ticket[] = [];
+      if (existingOrder.paid) {
+        console.log('Order already paid');
+        return { order: null, tickets: [], alreadyPaid: true };
+      }
 
-  if (!alreadyPaid) {
-    // 2) marca pagado
-    const order = await prisma.order.update({
-      where: { id: found.id },
-      data: { paid: true },
-    });
+      if (!existingOrder.userId) {
+        throw new Error('User not found');
+      }
+      // Update order to paid
 
-    // 3) crea tickets
-    for (let i = 0; i < order.ticketQuantity; i++) {
-      const ticketId = randomBytes(16).toString('hex');
-      const t = await prisma.ticket.create({
+      const order: Order = await prisma.order.update({
+        where: { eventReferenceId },
         data: {
-          ticketId,
-          userId: order.userId!,
-          orderId: order.id,
+          paid: true,
         },
       });
-      tickets.push(t);
+
+      if (code) {
+        await prisma.code.upsert({
+          where: { code },
+          update: {
+            used: {
+              increment: 1,
+            },
+          },
+          create: {
+            code,
+            used: 1,
+            discount: 0,
+          },
+        });
+      }
+
+      // Create tickets
+      let tickets: Ticket[] = [];
+
+      for (let i = 0; i < order.ticketQuantity; i++) {
+        const ticketId: string = randomBytes(16).toString('hex');
+
+        const ticket: Ticket | null = await prisma.ticket.create({
+          data: {
+            ticketId,
+            userId: existingOrder.userId,
+            orderId: existingOrder.id,
+            type,
+          },
+        });
+
+        tickets.push(ticket);
+      }
+
+      return { order, tickets, alreadyPaid: false };
     }
+  );
+
+  if (alreadyPaid) {
+    return { tickets: [], alreadyPaid, eventReferenceId };
   }
 
-  return { tickets, alreadyPaid, eventReferenceId, email };
+  if (!order || tickets.length === 0) {
+    throw new Error('Order or user not found or ticket not created');
+  }
+
+  return { tickets, alreadyPaid, eventReferenceId };
 }
 
 async function checkInTicket(ticketId: string): Promise<CheckInTicketResponse> {
@@ -279,6 +339,7 @@ async function createInvite(
             ticketId,
             userId: user.id,
             orderId: null,
+            type: 'general',
           },
         });
 
@@ -327,10 +388,48 @@ async function countTotalTickets(): Promise<number> {
   return count;
 }
 
+// Function to get ticket in the database by id
+async function getTicket(id: string): Promise<Ticket | null> {
+  try {
+    const ticket = await prisma.ticket.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    return ticket;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Function to get tickets
+async function getTickets(): Promise<Ticket[] | null> {
+  try {
+    const ticket = await prisma.ticket.findMany({
+      include: {
+        User: {
+          select: {
+            fullname: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return ticket;
+  } catch (error) {
+    return null;
+  }
+}
+
 export {
   checkInTicket,
   countTotalTickets,
   createInvite,
   createOrder,
-  updatePaidOrder,
+  updatePaidOrder57,
+  updatePaidOrder21,
+  getTicket,
+  getTickets,
 };
