@@ -171,8 +171,9 @@ export default function Page() {
 
         setUserData(undefined);
       } catch (error: any) {
-        setOpenAlert(true);
-        setAlertText(error.message);
+        // setOpenAlert(true);
+        // setAlertText(error.message);
+        console.log('error', error);
       }
     },
     [claimOrderPayment]

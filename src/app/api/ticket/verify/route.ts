@@ -97,13 +97,7 @@ export async function POST(request: Request) {
     // console.log(`Order payment status changed to paid`);
 
     if (!wasUpdated) {
-      // console.log(
-      // 'Order payment status was not changed, already in desired state'
-      // );
-      return NextResponse.json(
-        { error: 'Order payment status not changed' },
-        { status: 400 }
-      );
+      return NextResponse.json({ settled }, { status: 201 });
     }
 
     // If verified, send email to client
