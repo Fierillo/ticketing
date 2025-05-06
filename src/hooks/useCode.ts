@@ -11,27 +11,11 @@ interface UseCodeReturn {
 const useCode = (): UseCodeReturn => {
   const [code, setCode] = useState<string>('');
   const [discountMultiple, setDiscountMultiple] = useState<number>(1);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const codeFix = code.trim().toLowerCase();
-
-    if (codeFix === '') {
-      setDiscountMultiple(1);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-
-    const timeoutId = setTimeout(() => {
-      const discount = getCodeDiscountFront(codeFix);
-
-      setDiscountMultiple(discount);
-      setIsLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
+    const codeFix = code.trim().toUpperCase();
+    setDiscountMultiple(getCodeDiscountFront(codeFix));
   }, [code]);
 
   return {
