@@ -57,13 +57,6 @@ export async function POST(req: NextRequest) {
     // Consultar la cantidad total de tickets
     const totalTickets = await countTotalTickets();
 
-    if (totalTickets !== 0 || totalTickets === null) {
-      return NextResponse.json({
-        status: false,
-        errors: 'No tickets available',
-      });
-    }
-
     const unitPrice = Number(TICKET?.value);
     const blockValue =
       TICKET?.type === 'general' ? 0 : Math.floor(totalTickets / 21);
