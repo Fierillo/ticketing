@@ -79,91 +79,94 @@ async function updatePaidOrder21(
   code: string | null,
   type: string
 ): Promise<UpdatePaidOrderResponse21> {
-  const { order, tickets, alreadyPaid } = await prisma.$transaction(
-    async (tx) => {
-      // Get unpaid order
-      const existingOrder = await tx.order.findUnique({
-        where: { eventReferenceId },
-        select: { paid: true, id: true, userId: true },
-      });
+  const { tickets, alreadyPaid } = await prisma.$transaction(async (tx) => {
+    // Get unpaid order
+    const existingOrder = await tx.order.findUnique({
+      where: { eventReferenceId },
+      select: { paid: true, id: true, userId: true, ticketQuantity: true },
+    });
 
-      if (!existingOrder) {
-        console.log('Order not found');
-        throw new Error('Order not found');
-      }
-
-      if (existingOrder.paid) {
-        console.log('Order already paid');
-        return { order: null, tickets: [], alreadyPaid: true };
-      }
-
-      if (!existingOrder.userId) {
-        throw new Error('User not found');
-      }
-      // Update order to paid
-
-      const order: Order = await tx.order.update({
-        where: { eventReferenceId },
-        data: {
-          paid: true,
-        },
-      });
-
-      if (code) {
-        await tx.code.upsert({
-          where: { code },
-          update: {
-            used: {
-              increment: 1,
-            },
-          },
-          create: {
-            code,
-            used: 1,
-            discount: 0,
-          },
-        });
-      }
-
-      // Create tickets
-      let tickets: Ticket[] = [];
-
-      // Get the current greatest serial number
-      const lastTicket = await tx.ticket.findFirst({
-        where: {
-          type: type,
-        },
-        orderBy: {
-          serial: 'desc',
-        },
-      });
-      let currentSerial = lastTicket ? lastTicket.serial : 0;
-
-      for (let i = 0; i < order.ticketQuantity; i++) {
-        const ticketId: string = randomBytes(16).toString('hex');
-
-        const ticket: Ticket | null = await tx.ticket.create({
-          data: {
-            ticketId,
-            userId: existingOrder.userId,
-            orderId: existingOrder.id,
-            serial: ++currentSerial,
-            type,
-          },
-        });
-
-        tickets.push(ticket);
-      }
-
-      return { order, tickets, alreadyPaid: false };
+    if (!existingOrder) {
+      console.log('Order not found');
+      throw new Error('Order not found');
     }
-  );
+
+    if (existingOrder.paid) {
+      console.log('Order already paid');
+      return { order: null, tickets: [], alreadyPaid: true };
+    }
+
+    if (!existingOrder.userId) {
+      throw new Error('User not found');
+    }
+    // Update order to paid
+
+    const result = await tx.order.updateMany({
+      where: { eventReferenceId, paid: false },
+      data: {
+        paid: true,
+      },
+    });
+
+    if (result.count === 0) {
+      // No update happened → already paid or not found
+      return { tickets: [], alreadyPaid: true, eventReferenceId };
+    }
+
+    if (code) {
+      await tx.code.upsert({
+        where: { code },
+        update: {
+          used: {
+            increment: 1,
+          },
+        },
+        create: {
+          code,
+          used: 1,
+          discount: 0,
+        },
+      });
+    }
+
+    // Create tickets
+    let tickets: Ticket[] = [];
+
+    // Get the current greatest serial number
+    const lastTicket = await tx.ticket.findFirst({
+      where: {
+        type: type,
+      },
+      orderBy: {
+        serial: 'desc',
+      },
+    });
+    let currentSerial = lastTicket ? lastTicket.serial : 0;
+
+    for (let i = 0; i < existingOrder.ticketQuantity; i++) {
+      const ticketId: string = randomBytes(16).toString('hex');
+
+      const ticket: Ticket | null = await tx.ticket.create({
+        data: {
+          ticketId,
+          userId: existingOrder.userId,
+          orderId: existingOrder.id,
+          serial: ++currentSerial,
+          type,
+        },
+      });
+
+      tickets.push(ticket);
+    }
+
+    return { tickets, alreadyPaid: false };
+  });
 
   if (alreadyPaid) {
     return { tickets: [], alreadyPaid, eventReferenceId };
   }
 
-  if (!order || tickets.length === 0) {
+  if (tickets.length === 0) {
     throw new Error('Order or user not found or ticket not created');
   }
 
