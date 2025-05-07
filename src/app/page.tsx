@@ -325,9 +325,9 @@ export default function Page() {
                       </div>
                       {TICKET?.type !== 'general' && blockBatch !== null && (
                         <BlockBar
-                          totalSquares={5}
+                          totalSquares={3}
                           filled={Math.floor(Number(totalTickets || 0) / 21)}
-                          // totalTickets={(totalTickets || 0) + 1}
+                          totalTickets={(totalTickets || 0) + 1}
                         />
                       )}
                     </Card>

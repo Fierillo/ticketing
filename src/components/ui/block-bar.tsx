@@ -50,7 +50,7 @@ export function BlockBar({
         <span>{filled === 0 ? 'Génesis' : '#' + filled}</span>
       </div>
       <div className="flex gap-1 justify-end w-full text-xs font-bold">
-        <span>Próximo: #1</span>
+        <span>Próximo: #{totalTickets}</span>
       </div>
     </div>
   );
