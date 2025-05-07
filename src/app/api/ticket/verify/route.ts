@@ -90,8 +90,12 @@ export async function POST(request: Request) {
     if (updateOrderResponse?.tickets.length > 0) {
       try {
         for (const ticket of updateOrderResponse.tickets) {
-          await ses.sendEmailOrder(email, ticket.ticketId!); // TODO: send one email with all tickets
-          console.log('Payment via NIP-57 confirmed');
+          await ses.sendEmailOrder(
+            email,
+            ticket.ticketId!,
+            ticket.type,
+            ticket.serial
+          );
         }
       } catch (error: any) {
         return NextResponse.json(

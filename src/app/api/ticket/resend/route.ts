@@ -5,6 +5,8 @@ import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+  return NextResponse.json({ error: 'Not implemented' });
+
   const paidOrders = await prisma.order.findMany({
     where: {
       paid: true,
@@ -33,16 +35,18 @@ export async function GET() {
         for (let i = 0; i < order.ticketQuantity; i++) {
           const ticketId: string = randomBytes(16).toString('hex');
 
-          const ticket: Ticket | null = await prisma.ticket.create({
-            data: {
-              ticketId,
-              userId: order.userId!,
-              orderId: order.id,
-            },
-          });
+          // TODO: FIX THIS
 
-          if (!ticket) return;
-          createdTickets[order.User.email].push(ticket);
+          // const ticket: Ticket | null = await prisma.ticket.create({
+          //   data: {
+          //     ticketId,
+          //     userId: order.userId!,
+          //     orderId: order.id,
+          //   },
+          // });
+
+          // if (!ticket) return;
+          // createdTickets[order.User.email].push(ticket);
         }
       })
     );

@@ -49,13 +49,13 @@ export async function POST(req: NextRequest) {
 
     // 3. Fetch discount & LNURLP concurrently
     const [discount, lnurlp] = await Promise.all([
-      code ? getCodeDiscountFront(code.toLowerCase()) : Promise.resolve(1),
+      code ? getCodeDiscountFront(code.toUpperCase()) : Promise.resolve(1),
       getLnurlpFromWalias(walias),
     ]);
     if (!lnurlp?.callback) throw new AppError('Invalid LNURLP data', 500);
 
     // Consultar la cantidad total de tickets
-    const totalTickets = await countTotalTickets();
+    const totalTickets = await countTotalTickets(TICKET.type);
 
     const unitPrice = Number(TICKET?.value);
     const blockValue =

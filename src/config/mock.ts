@@ -8,10 +8,4 @@ export const EVENT = {
   emailSubject: 'Tu entrada para el Bitcoin Pizza Day',
 };
 
-export const TICKET = {
-  title: 'Ticket General',
-  value: 15,
-  currency: 'USD',
-  type: 'general',
-};
-
+export const TICKET = JSON.parse(process.env.NEXT_PUBLIC_TICKET || '{}');

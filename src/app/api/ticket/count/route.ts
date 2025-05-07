@@ -3,13 +3,16 @@ import { AppError } from '@/lib/errors/appError';
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 
+// import mock file
+import { TICKET } from '@/config/mock';
+
 export async function GET(req: NextRequest) {
   try {
     if (req.method !== 'GET') {
       throw new AppError('Method not allowed', 405);
     }
 
-    const totalTickets = await countTotalTickets();
+    const totalTickets = await countTotalTickets(TICKET.type);
 
     return NextResponse.json({
       status: true,

@@ -27,7 +27,11 @@ export const TicketCountProvider = ({
     const checkTicketsStatus = async () => {
       console.info('Checking tickets status...');
 
-      const totalTickets = await countTotalTickets();
+      const totalTickets = await fetch('/api/ticket/count').then(
+        async (res) => {
+          return (await res.json()).data.totalTickets;
+        }
+      );
 
       setMaxTicketsReached(totalTickets >= MAX_TICKETS);
       setTotalTickets(totalTickets);
