@@ -324,7 +324,7 @@ export default function Page() {
                         )}
                       </div>
                       {TICKET?.type !== 'general' && blockBatch !== null && (
-                        <BlockBar totalTickets={(totalTickets || 0) + 1} />
+                        <BlockBar totalTickets={totalTickets || 0} />
                       )}
                     </Card>
                     {blockBatch !== null && (

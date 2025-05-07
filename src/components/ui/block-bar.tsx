@@ -15,6 +15,7 @@ export function BlockBar({ totalTickets = 0 }: BlockBarProps) {
     ((totalTickets % BLOCK_SIZE) * 100) / BLOCK_SIZE;
   const currentBlock = Math.floor(totalTickets / BLOCK_SIZE);
 
+  console.info('totalTickets:', totalTickets);
   return (
     <div
       className="flex flex-col justify-between items-center w-full mt-2"
@@ -41,7 +42,7 @@ export function BlockBar({ totalTickets = 0 }: BlockBarProps) {
         <span>{currentBlock === 0 ? 'Génesis' : '#' + currentBlock}</span>
       </div>
       <div className="flex gap-1 justify-end w-full text-xs font-bold">
-        <span>Próximo: #{totalTickets}</span>
+        <span>Próximo: #{totalTickets + 1}</span>
       </div>
     </div>
   );
