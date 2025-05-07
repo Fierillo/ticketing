@@ -15,7 +15,7 @@ import { generateZapRequest, senderPublicKey } from '@/lib/utils/nostr';
 
 import { TICKET } from '@/config/mock';
 
-let walias = process.env.NEXT_POS_WALIAS;
+let walias = process.env.NEXT_POS_WALIAS!;
 let listId = process.env.NEXT_SENDY_LIST_ID;
 
 const requestOrderSchema = z.object({
