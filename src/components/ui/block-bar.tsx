@@ -33,7 +33,7 @@ export function BlockBar({
             }`}
           >
             <div
-              className={`h-2 w-full ${idx < filled ? 'bg-orange-400' : 'bg-gray-300'} rounded-full overflow-hidden relative`}
+              className={`h-2 w-full ${idx < filled ? 'bg-green-400' : 'bg-gray-300'} rounded-full overflow-hidden relative`}
             >
               <div
                 className={`h-full ${'bg-gradient-to-r from-brand-green to-brand-green/80'}`}
@@ -45,9 +45,12 @@ export function BlockBar({
           </div>
         ))}
       </div>
-      <div className="flex gap-1 justify-end w-full text-xs text-orange-400 font-bold">
+      <div className="flex gap-1 justify-end w-full text-sm text-green-400 font-bold mt-1">
         <span>Bloque</span>
         <span>{filled === 0 ? 'Génesis' : '#' + filled}</span>
+      </div>
+      <div className="flex gap-1 justify-end w-full text-xs font-bold">
+        <span>Próximo: #1</span>
       </div>
     </div>
   );
