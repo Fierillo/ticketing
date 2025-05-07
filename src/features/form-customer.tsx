@@ -13,14 +13,12 @@ const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get th
 interface FormCustomerProps {
   onSubmit: (data: OrderUserData) => void;
   discountMultiple: number;
-  isCodeLoading: boolean;
   setCode: (code: string) => void;
 }
 
 export function FormCustomer({
   onSubmit,
   discountMultiple,
-  isCodeLoading,
   setCode,
 }: FormCustomerProps) {
   // Form
@@ -29,6 +27,7 @@ export function FormCustomer({
   const [newsletter, setNewsletter] = useState<boolean>(true);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [currentCode, setCurrentCode] = useState<string>('');
   const [codeStatus, setCodeStatus] = useState<string>(''); // 'valid', 'invalid', or 'loading'
   const { maxTicketsReached, totalTickets } = useTicketCount();
 
@@ -54,12 +53,12 @@ export function FormCustomer({
   };
 
   useEffect(() => {
-    if (isCodeLoading) {
-      setCodeStatus('loading');
-    } else {
-      setCodeStatus(discountMultiple != 1 ? 'valid' : 'invalid');
-    }
-  }, [isCodeLoading, discountMultiple]);
+    setCodeStatus(discountMultiple != 1 ? 'valid' : 'invalid');
+  }, [discountMultiple]);
+
+  useEffect(() => {
+    setCode(currentCode);
+  }, [currentCode]);
 
   return (
     <>
@@ -107,10 +106,10 @@ export function FormCustomer({
                       id="code"
                       name="code"
                       placeholder="Code"
-                      onChange={(e) => setCode(e.target.value)}
+                      onChange={(e) => setCurrentCode(e.target.value)}
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      {codeStatus !== '' && (
+                      {currentCode !== '' && (
                         <>
                           {codeStatus === 'valid' && (
                             <span className="text-green-500">
@@ -120,11 +119,6 @@ export function FormCustomer({
                           {codeStatus === 'invalid' && (
                             <span className="text-red-500">
                               <CircleX />
-                            </span>
-                          )}
-                          {codeStatus === 'loading' && (
-                            <span className="text-gray-500">
-                              <CircleDashed />
                             </span>
                           )}
                         </>

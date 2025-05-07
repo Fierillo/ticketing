@@ -495,7 +495,6 @@ export default function Page() {
               <FormCustomer
                 onSubmit={handleCreateOrder}
                 discountMultiple={discountMultiple}
-                isCodeLoading={isCodeLoading}
                 setCode={setCode}
               />
             )}
