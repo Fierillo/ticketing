@@ -1,65 +1,110 @@
-import axios from 'axios'
+// import axios from 'axios';
 
-const YADIO_URL = 'https://api.yadio.io/exrates/'
-const FETCH_INTERVAL = 60_000  // 1 minuto
+// const urlYadio = 'https://api.yadio.io/exrates/ARS';
+// let lastFetchTime: number | null = null;
+// let cachedBtcPrice: number | null = null;
+// const FETCH_INTERVAL = 60 * 1000;
 
-type RateCacheEntry = {
-  lastFetch: number
-  rate: number
-}
+// async function getBtcPrice(): Promise<number> {
+//   const currentTime = Date.now();
 
-const rateCache: Record<string, RateCacheEntry> = {}
+//   if (
+//     lastFetchTime &&
+//     currentTime - lastFetchTime < FETCH_INTERVAL &&
+//     cachedBtcPrice !== null
+//   ) {
+//     console.log('Using cached BTC price...');
+//     return cachedBtcPrice;
+//   }
 
-// Fetch BTC rate from Yadio
-async function getBtcRate(currency: string): Promise<number> {
-  const now = Date.now()
-  const cache = rateCache[currency]
+//   try {
+//     const res = await axios.get(urlYadio);
+//     const btcPrice = res.data.BTC;
 
-  if (cache && now - cache.lastFetch < FETCH_INTERVAL) {
-    return cache.rate
+//     lastFetchTime = currentTime;
+//     cachedBtcPrice = btcPrice;
+
+//     console.log('Fetching BTC price...');
+//     return btcPrice;
+//   } catch (error) {
+//     throw new Error('Could not fetch BTC price');
+//   }
+// }
+
+// async function convertMiliSatsToArs(priceMiliSats: number): Promise<number> {
+//   return Math.round(((await getBtcPrice()) / priceMiliSats) * 100000000000);
+// }
+
+// async function calculateTicketPrice(
+//   qty: number,
+//   ticketPriceMiliSats: number
+// ): Promise<number> {
+//   const ticketPriceSats: number =
+//     (await convertMiliSatsToArs(ticketPriceMiliSats)) / 1000;
+
+//   const totalTicketPrice: number = qty * ticketPriceSats;
+
+//   return totalTicketPrice;
+// }
+
+// export { calculateTicketPrice };
+
+import axios from 'axios';
+
+const urlYadio = 'https://api.yadio.io/exrates/ARS';
+
+let lastFetchTime: number | null = null;
+let cachedBtcPrice: number | null = null;
+const FETCH_INTERVAL = 60 * 1000;
+
+async function getBtcPrice(): Promise<number> {
+  const currentTime = Date.now();
+
+  if (
+    lastFetchTime &&
+    currentTime - lastFetchTime < FETCH_INTERVAL &&
+    cachedBtcPrice !== null
+  ) {
+    return cachedBtcPrice;
   }
 
   try {
-    const res = await axios.get(`${YADIO_URL}${currency}`)
-    const rate = res.data?.BTC
-    if (typeof rate !== 'number') {
-      throw new Error(`Respuesta inválida de Yadio para ${currency}`)
-    }
-    rateCache[currency] = { lastFetch: now, rate }
-    return rate
-  } catch (err: any) {
-    throw new Error(`No se pudo obtener la tasa BTC→${currency}: ${err.message}`)
+    const res = await axios.get(urlYadio);
+    const btcPrice = res.data.BTC;
+
+    lastFetchTime = currentTime;
+    cachedBtcPrice = btcPrice;
+
+    return btcPrice;
+  } catch (error) {
+    throw new Error('Could not fetch BTC price');
   }
 }
 
-// Calculate price in desired currency
-export async function convertSatsToCurrency(
-  sats: number,
-  currency: string
-): Promise<number> {
-  const rate = await getBtcRate(currency)
-  const value = (sats * rate) / 100_000_000
-  return Math.round(value * 100) / 100
+async function convertSatsToArs(priceSats: number): Promise<number> {
+  const btcPrice = await getBtcPrice();
+  return Math.round((btcPrice * priceSats) / 100000000);
 }
 
-// Calculate total price of tickets
-export async function calculateTicketPrice(
+async function calculateTicketPrice(
   qty: number,
-  ticketPriceSats: number,
-  currency: string
+  ticketPriceSats: number
 ): Promise<number> {
-  const unitPrice = await convertSatsToCurrency(ticketPriceSats, currency)
-  const total = unitPrice * qty
-  return Math.round(total * 100) / 100
+  const ticketPriceArs = await convertSatsToArs(ticketPriceSats);
+  return qty * ticketPriceArs;
 }
 
-// Convert amount from desired currency to sats
-export async function convertCurrencyToSats(
-  amount: number,
-  currency: string
+async function calculateCurrencyToSats(
+  currency: string,
+  amount: number
 ): Promise<number> {
-  const rate = await getBtcRate(currency)   // USD por BTC
-  // amount USD * (1 BTC / rate USD) * 100 000 000 sats/BTC
-  const sats = (amount / rate) * 100_000_000
-  return Math.round(sats)
+  const YADIO_API_URL = `https://api.yadio.io/rate/${currency}/BTC`;
+  const response = await fetch(YADIO_API_URL);
+  const data = await response.json();
+  const rate = (data?.rate).toFixed(0);
+
+  const value = ((amount * 100000000) / rate).toFixed(0);
+  return Number(value);
 }
+
+export { calculateTicketPrice, convertSatsToArs, calculateCurrencyToSats };

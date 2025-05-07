@@ -43,6 +43,8 @@ model Ticket {
     id       String  @id @default(uuid())
     ticketId String? @unique // for check in
     checkIn  Boolean @default(false)
+    serial   Int
+    type     String  @default("general")
 
     // Relations
     userId  String
@@ -50,6 +52,9 @@ model Ticket {
 
     User  User   @relation(fields: [userId], references: [id])
     Order Order? @relation(fields: [orderId], references: [id])
+
+    @@index([serial])
+    @@index([serial, type])
 }
 
 model Code {

@@ -1,10 +1,7 @@
-import { countTotalTickets } from '@/lib/utils/prisma';
+import { getTicket } from '@/lib/utils/prisma';
 import { AppError } from '@/lib/errors/appError';
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
-
-// import mock file
-import { TICKET } from '@/config/mock';
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,11 +9,18 @@ export async function GET(req: NextRequest) {
       throw new AppError('Method not allowed', 405);
     }
 
-    const totalTickets = await countTotalTickets(TICKET.type);
+    const { searchParams } = new URL(req.url);
+    const ticketId = searchParams.get('ticketId');
+
+    if (!ticketId) {
+      throw new AppError('ticketId is required', 400);
+    }
+
+    const ticket = await getTicket(ticketId);
 
     return NextResponse.json({
       status: true,
-      data: { totalTickets },
+      data: ticket,
     });
   } catch (error: any) {
     Sentry.captureException(error);

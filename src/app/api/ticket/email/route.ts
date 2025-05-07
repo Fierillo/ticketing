@@ -50,17 +50,17 @@ export async function POST(req: NextRequest) {
       include: {
         User: {
           select: {
-            email: true
-          }
-        }
-      }
+            email: true,
+          },
+        },
+      },
     });
 
     // Send email
     await ses.sendEmailOrder(ticket?.User?.email!, ticketId!); // TODO: send one email with all tickets
 
     return NextResponse.json({
-      status: true
+      status: true,
     });
   } catch (error: any) {
     Sentry.captureException(error);

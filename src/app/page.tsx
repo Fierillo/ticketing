@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Event } from 'nostr-tools';
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Navbar } from '@/components/navbar';
 import {
@@ -28,7 +28,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 
 import { cn } from '@/lib/utils';
 
@@ -47,34 +47,17 @@ import useCode from '@/hooks/useCode';
 import useOrder from '@/hooks/useOrder';
 import { useNostr, useSubscription } from '@lawallet/react';
 import { convertEvent } from '../lib/utils/nostr';
-import { calculateTicketPrice, convertCurrencyToSats } from '../lib/utils/price';
-import { useRelay } from '@/hooks/useRelay';
-import { blockPrice } from '@/lib/utils/blockPrice';
-import { countTotalTickets } from '@/lib/utils/prisma';
 
 // Mock data
-const TICKET = {
-  title: 'PANCHITOS PARTY',
-  subtitle: 'Traete a tu amigo normie a festejar a La Crypta',
-  date: 'Viernes 17 de Enero - 20:00hs hasta las 02:00hs',
-  description: [
-    'PANCHOS 🌭',
-    'Entretenimiento',
-    'Presentaciones',
-    'Bitcoiners',
-    'No sabes nada de Bitcoin pero te interesa? Vení!',
-  ],
-  imageUrl: 'https://placehold.co/400',
-  value: parseInt(process.env.NEXT_TICKET_PRICE || '1'), // Updated ticket price
-  valueType: 'USD',
-};
+import { EVENT, TICKET } from '@/config/mock';
+import { BlockBar } from '@/components/ui/block-bar';
+import { useTicketCount } from '@/hooks/use-ticket-count';
 
-const MAX_TICKETS = parseInt(process.env.NEXT_MAX_TICKETS || '0', 10); // Get the max tickets from env
+const BLOCK_INTERVAL = 21;
 
 export default function Page() {
   // Block Price
-  const [blockBatch, setBlockBatch] = useState<number>(0);
-  const [totalTicketsSold, setTotalTicketsSold] = useState<number>(0);
+  const [blockBatch, setBlockBatch] = useState<number | null>(null);
   // Flow
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -85,8 +68,6 @@ export default function Page() {
   const [userData, setUserData] = useState<OrderUserData | undefined>(
     undefined
   );
-  const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [ticketPrice, setTicketPrice] = useState<number>(TICKET.value);
   const [ticketQuantity, setTicketQuantity] = useState<number>(1); // Set initial ticket quantity to 1
   const [paymentRequest, setPaymentRequest] = useState<string | undefined>(
     undefined
@@ -94,17 +75,31 @@ export default function Page() {
   const [eventReferenceId, setEventReferenceId] = useState<string | undefined>(
     undefined
   );
-  const [verifyUrl, setVerifyUrl] = useState<string | undefined>(undefined);
-  const [maxTicketsReached, setMaxTicketsReached] = useState<boolean>(false);
+  const { maxTicketsReached, totalTickets } = useTicketCount();
 
   // Hooks
-  const { isPaid, requestNewOrder, claimOrderPayment, clear } = useOrder();
+  const {
+    isPaid,
+    requestNewOrder,
+    claimOrderPayment,
+    clear,
+    setCode: setOrderCode,
+  } = useOrder();
+
   const {
     discountMultiple,
     code,
     isLoading: isCodeLoading,
-    setCode,
+    setCode: setHookCode,
   } = useCode();
+
+  const setCode = useCallback(
+    (code: string) => {
+      setOrderCode(code);
+      setHookCode(code);
+    },
+    [setOrderCode, setHookCode]
+  );
 
   // Memoize filters to prevent unnecessary re-renders
   const filters = useMemo(
@@ -114,11 +109,13 @@ export default function Page() {
 
   // Nostr
   const { validateRelaysStatus } = useNostr();
-  const { events } = useSubscription({
-    filters,
-    options: { closeOnEose: false },
-    enabled: Boolean(eventReferenceId),
-  });
+  const events: Event[] = useMemo(() => [], []);
+  // const { events } = useSubscription({
+  //   filters,
+  //   options: { closeOnEose: false },
+  //   enabled: Boolean(eventReferenceId),
+  // });
+
   // const { events, relay, clearEvents } = useRelay({
   //   relayUrl: 'wss://relay.lawallet.ar',
   //   filters,
@@ -146,7 +143,6 @@ export default function Page() {
         // validateRelaysStatus();
         setPaymentRequest(pr);
         setEventReferenceId(eventReferenceId);
-        setVerifyUrl(verify);
 
         window.scrollTo({
           top: 0,
@@ -172,96 +168,13 @@ export default function Page() {
     ]
   );
 
-  // Process payment via nostr event
-  const processPayment = useCallback(
-    async (_event: any, _userData: OrderUserData) => {
-      try {
-        const event: Event = convertEvent(_event);
-
-        if (!event) {
-          console.warn('Event not defined ');
-          return;
-        }
-
-        if (!_userData) {
-          console.warn('User data not defined ');
-          return;
-        }
-
-        await claimOrderPayment(_userData, event);
-
-        setUserData(undefined);
-      } catch (error: any) {
-        setOpenAlert(true);
-        setAlertText(error.message);
-      }
-    },
-    [claimOrderPayment]
-  );
-
-  useEffect(() => {
-    events && events.length && userData && processPayment(events[0], userData);
-  }, [events, userData, processPayment]);
-
-  // Process payment via LUD-21 (using with useSubscription hook form lawallet/rect)
-  // const verifyPayment = useCallback(async () => {
-  //   try {
-  //     if (!verifyUrl) {
-  //       console.warn('Verify URL not defined');
-  //       return false;
-  //     }
-
-  //     const response = await fetch(verifyUrl);
-  //     if (!response.ok) {
-  //       throw new Error('Failed to fetch verify payment');
-  //     }
-
-  //     const verificationData = await response.json();
-  //     if (!verificationData.settled) {
-  //       console.warn('Payment not verified');
-  //       return false;
-  //     }
-
-  //     console.log('====> Payment verified, starting subscription');
-  //     subscription?.start();
-
-  //     return true;
-  //   } catch (error: any) {
-  //     setOpenAlert(true);
-  //     setAlertText(error.message);
-  //     return false;
-  //   }
-  // }, [verifyUrl, subscription]);
-
-  // Interval to verify payment via LUD-21 (using with useSubscription hook form lawallet/rect)
   // useEffect(() => {
-  //   let intervalId: NodeJS.Timeout | null = null;
-
-  //   const startVerificationInterval = () => {
-  //     if (verifyUrl && !isPaid) {
-  //       console.log('Setting up verification interval');
-  //       intervalId = setInterval(async () => {
-  //         const isVerified = await verifyPayment();
-  //         if (isVerified) {
-  //           console.log('====> Payment verified, clearing interval');
-  //           if (intervalId) {
-  //             clearInterval(intervalId);
-  //             intervalId = null;
-  //           }
-  //         }
-  //       }, 2000);
-  //     }
-  //   };
-
-  //   startVerificationInterval();
-
-  //   return () => {
-  //     if (intervalId) {
-  //       console.log('Clearing interval on cleanup');
-  //       clearInterval(intervalId);
-  //     }
-  //   };
-  // }, [verifyUrl, isPaid, verifyPayment]);
+  //   events &&
+  //     events.length &&
+  //     userData &&
+  //     !isPaid &&
+  //     processPayment(events[0], userData);
+  // }, [events, userData, processPayment, isPaid]);
 
   // UI Button "Back to page"
   const backToPage = useCallback(() => {
@@ -269,7 +182,6 @@ export default function Page() {
     setEventReferenceId(undefined);
     setTicketQuantity(1);
     setPaymentRequest(undefined);
-    setVerifyUrl(undefined);
     setCode('');
     setUserData(undefined);
     clear();
@@ -284,46 +196,6 @@ export default function Page() {
     validateRelaysStatus,
   ]);
 
-  // Fetch block price
-  useEffect(() => {
-    const fetchBlockPrice = async () => {
-      try {
-        const { totalSold, blockValue } = await blockPrice();
-        setBlockBatch(blockValue);
-        setTotalTicketsSold(totalSold);
-        // debug
-        console.log('totalSold:', totalSold);
-        console.log('blockValue:', blockValue);
-      } catch (error: any) {
-        console.error('Error fetching block price:', error);
-      }
-    };
-
-    fetchBlockPrice();
-  }, []);
-
-  // Update ticket price calculations
-  useEffect(() => {
-    const calculatePrices = async () => {
-      try {
-        // 1) Precio base + bloque de descuento, en USD
-        const ticketPrice = (TICKET.value + blockBatch * 10) * discountMultiple
-        setTicketPrice(ticketPrice)
-  
-        // 2) Convertir USD → sats
-        const satsPerTicket = await convertCurrencyToSats(ticketPrice, 'USD')
-  
-        // 3) Total sats según cantidad
-        const totalSats = satsPerTicket * ticketQuantity
-        setTotalPrice(totalSats)
-      } catch (err: any) {
-        console.error('Error calculando precios:', err)
-      }
-    }
-  
-    calculatePrices()
-  }, [ticketQuantity, discountMultiple, blockBatch])
-
   // Change screen when payment is confirmed
   useEffect(() => {
     if (isPaid) {
@@ -331,40 +203,10 @@ export default function Page() {
     }
   }, [isPaid]);
 
-  // Check total tickets in the database on component mount
   useEffect(() => {
-    const checkTickets = async () => {
-      try {
-        const response = await fetch('/api/ticket/count', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`${errorData.errors || response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (response.ok) {
-          if (data.data.totalTickets >= MAX_TICKETS) {
-            setTotalTicketsSold(data.data.totalTickets);
-            setMaxTicketsReached(true);
-            console.log('Ticket solds:', totalTicketsSold);
-          }
-        } else {
-          console.error('Failed to fetch total tickets:', data.error);
-        }
-      } catch (error) {
-        console.error('Error fetching total tickets:', error);
-      }
-    };
-
-    checkTickets();
-  }, []);
+    console.log('super totalTickets', totalTickets);
+    totalTickets !== null && setBlockBatch(Math.floor(totalTickets / 21));
+  }, [totalTickets]);
 
   useEffect(() => {
     const verifyRelaysConnection = (): void => {
@@ -380,11 +222,27 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
+  const total = useMemo(() => {
+    if (blockBatch === null) return 21000000000;
+
+    const blockValue = TICKET?.type === 'general' ? 0 : blockBatch;
+    const unitPrice = Number(TICKET?.value);
+
+    return Math.round(
+      (unitPrice + Number(blockValue * 10)) * ticketQuantity * discountMultiple
+    );
+  }, [discountMultiple, blockBatch, ticketQuantity, totalTickets]);
+
   return (
     <>
       <div className="flex flex-col md:flex-row w-full min-h-[100dvh]">
         {/* Aside info */}
-        <aside className="bg-[url('../../public/background-1.png')] bg-cover bg-[center_top_-100px] relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0">
+        <aside
+          className={`bg-black bg-fit bg-[center_top_-420px] relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0`}
+          style={{
+            backgroundImage: `url('/${EVENT?.imageUrl || ''}')`,
+          }}
+        >
           <Navbar />
           <div
             className={cn(
@@ -394,109 +252,104 @@ export default function Page() {
           >
             {screen === 'information' ? (
               <>
-                <Card className="p-4 bg-black bg-opacity-85">
-                  <div className="flex flex-col items-center">
-                    <CardTitle>{TICKET.title}</CardTitle>
-                    <CardTitle className="text-base mt-2">{TICKET.subtitle} </CardTitle>
-                    <CardTitle className="text-sm mt-2">Villanueva 1367, CABA</CardTitle>
-                    <CardContent>
-                      <div className="mt-2">{TICKET.date}</div>
-                      <ul className="list-disc pl-5 mt-4 text-sm">
-                        {TICKET.description.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </div>
-                </Card>
+                <div>
+                  <Card className="p-4 gap-2 text-center opacity-95">
+                    <div className="flex flex-col">
+                      <h1 className="text-2xl font-semibold mb-4 leading-none tracking-tight">
+                        {EVENT?.title}
+                      </h1>
+                      <p>{EVENT?.description}</p>
+                    </div>
+                    <div className="flex flex-col">
+                      <p>Villanueva 1367, CABA</p>
+                      <p>{EVENT?.date}</p>
+                    </div>
+                  </Card>
+                </div>
                 {!maxTicketsReached && (
                   <>
-                    <Card className="p-4 bg-black bg-opacity-85 mt-4">
+                    <Card className="p-4 mt-4 opacity-95">
                       <div className="flex justify-between items-center gap-4">
                         <div>
+                          <p>{TICKET?.title}</p>
+
                           <p className="font-semibold text-lg">
-                            <>
-                              {discountMultiple !== 1 && (
-                                <span className="line-through mr-2 text-text">
-                                  {Math.round(
-                                    ticketPrice
-                                  )}
+                            {blockBatch === null
+                              ? 'Cargando...'
+                              : TICKET?.value +
+                                blockBatch * 10 +
+                                ' ' +
+                                TICKET?.currency}
+                          </p>
+                        </div>
+                        {TICKET?.type === 'general' && (
+                          <div className="flex gap-2 items-center">
+                            <Button
+                              variant={
+                                screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
+                                  ? 'ghost'
+                                  : 'secondary'
+                              }
+                              size="icon"
+                              onClick={() =>
+                                setTicketQuantity(ticketQuantity - 1)
+                              }
+                              disabled={
+                                screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
+                              }
+                            >
+                              <MinusIcon />
+                            </Button>
+                            <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
+                              {screen !== 'information' && (
+                                <span className="font-normal text-xs text-text">
+                                  x
                                 </span>
                               )}
-                              {ticketPrice} USD
-                            </>
+                              {ticketQuantity}
+                            </p>
+                            <Button
+                              variant={
+                                screen !== 'information' ? 'ghost' : 'secondary'
+                              }
+                              size="icon"
+                              onClick={() =>
+                                setTicketQuantity(ticketQuantity + 1)
+                              }
+                              disabled={screen !== 'information'}
+                            >
+                              <PlusIcon />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {TICKET?.type !== 'general' && blockBatch !== null && (
+                        <BlockBar
+                          totalSquares={5}
+                          filled={Math.floor(Number(totalTickets || 0) / 21)}
+                          // totalTickets={(totalTickets || 0) + 1}
+                        />
+                      )}
+                    </Card>
+                    {blockBatch !== null && (
+                      <div className="p-4 bg-black bg-opacity-85 mt-4">
+                        <div className="flex gap-4 justify-between items-center">
+                          <p className="text-text font-bold">Total</p>
+                          <div className="text-right">
+                            <p className="font-bold text-lg">
+                              {total}
+                              {TICKET.currency}
+                            </p>
                             {discountMultiple !== 1 && (
-                              <span className="font-semibold text-sm text-primary">
-                                {' '}
+                              <p className="font-semibold text-sm text-primary">
                                 {((1 - discountMultiple) * 100).toFixed(0)}
                                 {'% OFF'}
-                              </span>
+                              </p>
                             )}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <Button
-                            variant={
-                              screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
-                                ? 'ghost'
-                                : 'secondary'
-                            }
-                            size="icon"
-                            onClick={() =>
-                              setTicketQuantity(ticketQuantity - 1)
-                            }
-                            disabled={
-                              screen !== 'information' || ticketQuantity === 1 // Change minimum ticket quantity to 1
-                            }
-                          >
-                            <MinusIcon />
-                          </Button>
-                          <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
-                            {screen !== 'information' && (
-                              <span className="font-normal text-xs text-text">
-                                x
-                              </span>
-                            )}
-                            {ticketQuantity}
-                          </p>
-                          <Button
-                            variant={
-                              screen !== 'information' ? 'ghost' : 'secondary'
-                            }
-                            size="icon"
-                            onClick={() =>
-                              setTicketQuantity(ticketQuantity + 1)
-                            }
-                            disabled={screen !== 'information'}
-                          >
-                            <PlusIcon />
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                    <Card className="bg-black bg-opacity-85">
-                      <div className="p-4">
-                        <div className="flex gap-4 justify-between items-center">
-                          <p className="text-text">Total</p>
-                          <div className="text-right">
-                            <p className="font-bold text-md">
-                              {totalPrice ? (
-                                <>
-                                  {discountMultiple !== 1 && (
-                                    <span className="line-through mr-2 text-text">
-                                      {Math.round(totalPrice / discountMultiple)}
-                                    </span>
-                                  )}
-                                  {totalPrice} SAT
-                                </>
-                              ) : (
-                                'Calculating...'
-                              )}
-                            </p>
                           </div>
                         </div>
                       </div>
-                    </Card>
+                    )}
                   </>
                 )}
               </>
@@ -511,11 +364,6 @@ export default function Page() {
                     <AccordionTrigger className="flex gap-2 no-underline">
                       <div className="flex items-center justify-between gap-2 w-full">
                         Show order summary
-                        <p className="font-bold text-lg no-underline">
-                          {totalPrice
-                            ? totalPrice + ' ' + TICKET.valueType
-                            : 'Calculating...'}
-                        </p>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
@@ -524,7 +372,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {ticketPrice} SAT
+                              {total} {TICKET?.currency}
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -537,39 +385,44 @@ export default function Page() {
                           </div>
                         </div>
                       </Card>
-                      <div className="p-4">
+                      {/*<div className="p-4 mt-4">
                         <div className="flex gap-4 justify-between items-center">
                           <p className="text-text text-md">Total</p>
-                          <div className="text-right">
+                          <div className="flex flex-col text-right">
                             <p className="font-bold text-md">
-                              {totalPrice
-                                ? `${totalPrice} ${TICKET.valueType}`
-                                : 'Calculating...'}
+                              {discountMultiple === 1
+                                ? (TICKET?.value + blockBatch * 10) * ticketQuantity
+                                : Math.round(
+                                    (TICKET?.value + blockBatch * 10) *
+                                      ticketQuantity *
+                                      discountMultiple
+                                  )}{' '}
+                              {TICKET.currency}
                             </p>
+                            {discountMultiple !== 1 && (
+                              <p className="font-semibold text-sm text-primary">
+                                {((1 - discountMultiple) * 100).toFixed(0)}
+                                {'% OFF'}
+                              </p>
+                            )}
                           </div>
                         </div>
-                      </div>
+                      </div>*/}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
 
                 <div className="hidden md:block ">
-                  <Card className="p-4 bg-background">
+                  <Card className="p-4 bg-background opacity-95">
                     <div className="flex justify-between items-center gap-4">
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {ticketPrice} SAT
-                          {discountMultiple !== 1 && (
-                            <span className="font-semibold text-sm text-primary">
-                              {' '}
-                              {((1 - discountMultiple) * 100).toFixed(0)}
-                              {'% OFF'}
-                            </span>
-                          )}
+                          {blockBatch === null
+                            ? 'Cargando...'
+                            : TICKET?.value + blockBatch * 10}{' '}
+                          {TICKET?.currency}
                         </p>
-                      </div>
-                      <div className="flex gap-2 items-center">
                         <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
                           <span className="font-normal text-text">x</span>
                           {ticketQuantity}
@@ -577,25 +430,22 @@ export default function Page() {
                       </div>
                     </div>
                   </Card>
-                  <Card className="bg-background">
-                    <div className="p-4">
-                      <div className="flex gap-4 justify-between items-center">
-                        <p className="text-text">Total</p>
-                        <div className="text-right">
-                          <p className="font-bold text-md">
-                            <>
-                              {discountMultiple !== 1 && (
-                                <span className="line-through mr-2 text-text">
-                                  {Math.round(totalPrice / discountMultiple)}
-                                </span>
-                              )}
-                              {totalPrice} {TICKET.valueType}
-                            </>
+                  <div className="p-4 bg-black bg-opacity-85 mt-4">
+                    <div className="flex gap-4 justify-between items-center">
+                      <p className="text-text font-bold">Total</p>
+                      <div className="text-right">
+                        <p className="font-bold text-lg">
+                          {total} {TICKET.currency}
+                        </p>
+                        {discountMultiple !== 1 && (
+                          <p className="font-semibold text-sm text-primary">
+                            {((1 - discountMultiple) * 100).toFixed(0)}
+                            {'% OFF'}
                           </p>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  </Card>
+                  </div>
                 </div>
               </>
             )}

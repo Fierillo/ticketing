@@ -1,3 +1,5 @@
+'use server';
+
 import { prisma } from '@/services/prismaClient';
 import { Order, Ticket, User } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -7,9 +9,16 @@ export interface CreateOrderResponse {
   eventReferenceId: string;
 }
 
-export interface UpdatePaidOrderResponse {
+export interface UpdatePaidOrderResponse57 {
   tickets: Ticket[];
   alreadyPaid: boolean;
+  eventReferenceId: string;
+}
+
+export interface UpdatePaidOrderResponse21 {
+  tickets: Ticket[];
+  alreadyPaid: boolean;
+  eventReferenceId: string;
 }
 
 export interface CheckInTicketResponse {
@@ -26,7 +35,7 @@ async function createOrder(
   fullname: string,
   email: string,
   ticketQuantity: number,
-  totalMiliSats: number,
+  totalMiliSats: number
 ): Promise<CreateOrderResponse> {
   const eventReferenceId: string = randomBytes(32).toString('hex');
 
@@ -64,94 +73,111 @@ async function createOrder(
   return response;
 }
 
-async function updatePaidOrder(
-  fullname: string,
-  email: string,
-  zapReceipt: Event,
-  code: string | null
-): Promise<UpdatePaidOrderResponse> {
-  const eventReferenceId = zapReceipt.tags.find((tag) => tag[0] === 'e')![1];
+// LUD-21
+async function updatePaidOrder21(
+  eventReferenceId: string,
+  code: string | null,
+  type: string
+): Promise<UpdatePaidOrderResponse21> {
+  const { tickets, alreadyPaid } = await prisma.$transaction(async (tx) => {
+    // Get unpaid order
+    const existingOrder = await tx.order.findUnique({
+      where: { eventReferenceId },
+      select: { paid: true, id: true, userId: true, ticketQuantity: true },
+    });
 
-  const { order, user, tickets, alreadyPaid } = await prisma.$transaction(
-    async () => {
-      // Check if order is already paid
-      const existingOrder = await prisma.order.findUnique({
-        where: { eventReferenceId },
-        select: { paid: true },
+    if (!existingOrder) {
+      console.log('Order not found');
+      throw new Error('Order not found');
+    }
+
+    if (existingOrder.paid) {
+      console.log('Order already paid');
+      return { order: null, tickets: [], alreadyPaid: true };
+    }
+
+    if (!existingOrder.userId) {
+      throw new Error('User not found');
+    }
+    // Update order to paid
+
+    const result = await tx.order.updateMany({
+      where: { eventReferenceId, paid: false },
+      data: {
+        paid: true,
+      },
+    });
+
+    if (result.count === 0) {
+      // No update happened → already paid or not found
+      return { tickets: [], alreadyPaid: true, eventReferenceId };
+    }
+
+    if (code) {
+      await tx.code.upsert({
+        where: { code },
+        update: {
+          used: {
+            increment: 1,
+          },
+        },
+        create: {
+          code,
+          used: 1,
+          discount: 0,
+        },
       });
+    }
 
-      if (existingOrder?.paid) {
-        return { order: null, user: null, tickets: [], alreadyPaid: true };
-      }
+    // Create tickets
+    let tickets: Ticket[] = [];
 
-      // Update order to paid
-      const order: Order | null = await prisma.order.update({
-        where: { eventReferenceId },
+    // Get the current greatest serial number
+    const lastSerialResult = await tx.$queryRawUnsafe<{ serial: number }[]>(
+      `SELECT serial FROM "Ticket" WHERE type = $1 ORDER BY serial DESC LIMIT 1 FOR UPDATE`,
+      type
+    );
+
+    let currentSerial = lastSerialResult.length
+      ? lastSerialResult[0].serial
+      : 0;
+
+    for (let i = 0; i < existingOrder.ticketQuantity; i++) {
+      const ticketId: string = randomBytes(16).toString('hex');
+
+      const ticket: Ticket | null = await tx.ticket.create({
         data: {
-          paid: true,
-          zapReceiptId: zapReceipt.id,
+          ticketId,
+          userId: existingOrder.userId,
+          orderId: existingOrder.id,
+          serial: ++currentSerial,
+          type,
         },
       });
 
-      // Update the user in case their name changes
-      const user: User | null = await prisma.user.update({
-        where: { email },
-        data: { fullname },
-      });
-
-      if (code) {
-        await prisma.code.update({
-          where: { code },
-          data: {
-            used: {
-              increment: 1,
-            },
-          },
-        });
-      }
-
-      if (!order || !order.userId) {
-        throw new Error('Order or user not found, cannot create ticket');
-      }
-
-      // Create tickets
-      let tickets: Ticket[] = [];
-
-      for (let i = 0; i < order.ticketQuantity; i++) {
-        const ticketId: string = randomBytes(16).toString('hex');
-
-        const ticket: Ticket | null = await prisma.ticket.create({
-          data: {
-            ticketId,
-            userId: order.userId,
-            orderId: order.id,
-          },
-        });
-
-        tickets.push(ticket);
-      }
-
-      return { order, user, tickets, alreadyPaid: false };
+      tickets.push(ticket);
     }
-  );
+
+    return { tickets, alreadyPaid: false };
+  });
 
   if (alreadyPaid) {
-    return { tickets: [], alreadyPaid };
+    return { tickets: [], alreadyPaid, eventReferenceId };
   }
 
-  if (!order || tickets.length === 0) {
+  if (tickets.length === 0) {
     throw new Error('Order or user not found or ticket not created');
   }
 
-  return { tickets, alreadyPaid };
+  return { tickets, alreadyPaid, eventReferenceId };
 }
 
 async function checkInTicket(ticketId: string): Promise<CheckInTicketResponse> {
   const { alreadyCheckedIn, checkIn } = await prisma.$transaction(
     // To Do: optimize this query with conditional update
-    async () => {
+    async (tx) => {
       // Find ticket
-      const ticket: Ticket | null = await prisma.ticket.findUnique({
+      const ticket: Ticket | null = await tx.ticket.findUnique({
         where: {
           ticketId,
         },
@@ -171,7 +197,7 @@ async function checkInTicket(ticketId: string): Promise<CheckInTicketResponse> {
       }
 
       // Update ticket to checked in
-      const ticketChecked: Ticket = await prisma.ticket.update({
+      const ticketChecked: Ticket = await tx.ticket.update({
         where: {
           ticketId,
         },
@@ -201,14 +227,14 @@ async function createInvite(
   action: string,
   list: [string, string][]
 ): Promise<CreateInviteResponse> {
-  const { ticketList } = await prisma.$transaction(async (prisma) => {
+  const { ticketList } = await prisma.$transaction(async (tx) => {
     let ticketList: [string, string][] = [];
 
     if (action === 'add') {
       for (const [fullname, email] of list) {
         console.log(fullname, email);
         // Create user
-        const user = await prisma.user.upsert({
+        const user = await tx.user.upsert({
           where: {
             email,
           },
@@ -226,11 +252,13 @@ async function createInvite(
         // Create ticket for the user
         const ticketId: string = randomBytes(16).toString('hex');
 
-        const ticket: Ticket = await prisma.ticket.create({
+        const ticket: Ticket = await tx.ticket.create({
           data: {
             ticketId,
             userId: user.id,
             orderId: null,
+            type: 'general',
+            serial: 0,
           },
         });
 
@@ -274,9 +302,47 @@ async function createInvite(
 }
 
 // Function to count total tickets in the database
-async function countTotalTickets(): Promise<number> {
-  const count = await prisma.ticket.count();
-  return count;
+async function countTotalTickets(type: string): Promise<number> {
+  return await prisma.ticket.count({
+    where: {
+      type: type,
+    },
+  });
+}
+
+// Function to get ticket in the database by id
+async function getTicket(id: string): Promise<Ticket | null> {
+  try {
+    const ticket = await prisma.ticket.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    return ticket;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Function to get tickets
+async function getTickets(): Promise<Ticket[] | null> {
+  try {
+    const ticket = await prisma.ticket.findMany({
+      include: {
+        User: {
+          select: {
+            fullname: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return ticket;
+  } catch (error) {
+    return null;
+  }
 }
 
 export {
@@ -284,5 +350,7 @@ export {
   countTotalTickets,
   createInvite,
   createOrder,
-  updatePaidOrder,
+  updatePaidOrder21,
+  getTicket,
+  getTickets,
 };

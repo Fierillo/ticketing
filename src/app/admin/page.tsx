@@ -1,5 +1,7 @@
 'use client';
 
+import useSWR from 'swr';
+
 import QrScanner from '@/components/scanner/Scanner';
 import { createColumns, TicketInfo } from '@/components/table/columns';
 import { DataTable } from '@/components/table/data-table';
@@ -42,13 +44,12 @@ import { Event, EventTemplate, finalizeEvent, getPublicKey } from 'nostr-tools';
 import NimiqQrScanner from 'qr-scanner';
 import * as React from 'react';
 import { useCallback, useState } from 'react';
+import fetcher from '@/config/fetcher';
 
 export default function AdminPage() {
   // Authentication
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [privateKey, setPrivateKey] = useState('');
-  // Orders
-  const [orders, setOrders] = useState<TicketInfo[]>([]);
   // Table
   const [searchTerm, setSearchTerm] = useState('');
   // Scanner
@@ -57,122 +58,72 @@ export default function AdminPage() {
     'checkedIn' | 'alreadyCheckedIn' | 'idle'
   >('idle');
 
-  const handleLogin = async () => {
-    try {
-      if (!privateKey) {
-        toast({
-          title: 'Error',
-          description: 'Private key is required',
-          variant: 'destructive',
-          duration: 3000,
-        });
-        return;
-      }
+  // SWR
+  const { data, isLoading, mutate } = useSWR('/api/ticket/all', fetcher);
 
-      let publicKey;
-      try {
-        const privKey = Uint8Array.from(Buffer.from(privateKey, 'hex'));
-        publicKey = getPublicKey(privKey);
-      } catch (error: any) {
-        throw new Error('Invalid private key');
-      }
+  // const handleLogin = async () => {
+  //   try {
+  //     if (!privateKey) {
+  //       toast({
+  //         title: 'Error',
+  //         description: 'Private key is required',
+  //         variant: 'destructive',
+  //         duration: 3000,
+  //       });
+  //       return;
+  //     }
 
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ publicKey }),
-      });
+  //     let publicKey;
+  //     try {
+  //       const privKey = Uint8Array.from(Buffer.from(privateKey, 'hex'));
+  //       publicKey = getPublicKey(privKey);
+  //     } catch (error: any) {
+  //       throw new Error('Invalid private key');
+  //     }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`${errorData.errors || response.statusText}`);
-      }
+  //     const response = await fetch('/api/admin/login', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ publicKey }),
+  //     });
 
-      setIsAuthenticated(true);
-      toast({
-        title: 'Success',
-        description: 'Logged in successfully',
-        variant: 'default',
-        duration: 3000,
-      });
-      fetchOrders();
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-        duration: 3000,
-      });
-    }
-  };
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(`${errorData.errors || response.statusText}`);
+  //     }
 
-  const fetchOrders = async () => {
-    try {
-      await fetch('/api/ticket/resend');
-
-      const content = {
-        limit: 0,
-        // checked_in: true,
-        // ticket_id: "example-ticket-id",
-        // email:  "example-email@domain.com",
-      };
-
-      const unsignedAuthEvent: EventTemplate = {
-        kind: 27242,
-        tags: [] as string[][],
-        content: JSON.stringify(content),
-        created_at: Math.round(Date.now() / 1000),
-      };
-
-      const privKey = Uint8Array.from(Buffer.from(privateKey, 'hex'));
-      const authEvent: Event = finalizeEvent(unsignedAuthEvent, privKey);
-
-      const response = await fetch('/api/ticket/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ authEvent }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || response.statusText);
-      }
-      const data = await response.json();
-      setOrders(data.data);
-    } catch (error: any) {
-      console.error('Error:', error.message);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch orders',
-        variant: 'destructive',
-        duration: 3000,
-      });
-    }
-  };
+  //     setIsAuthenticated(true);
+  //     toast({
+  //       title: 'Success',
+  //       description: 'Logged in successfully',
+  //       variant: 'default',
+  //       duration: 3000,
+  //     });
+  //     fetchOrders();
+  //   } catch (error: any) {
+  //     toast({
+  //       title: 'Error',
+  //       description: error.message,
+  //       variant: 'destructive',
+  //       duration: 3000,
+  //     });
+  //   }
+  // };
 
   const handleCheckIn = useCallback(
     async (ticketId: string) => {
       try {
-        const unsignedAuthEvent: EventTemplate = {
-          kind: 27241,
-          tags: [] as string[][],
-          content: JSON.stringify({ ticket_id: ticketId }),
-          created_at: Math.round(Date.now() / 1000),
-        };
-
-        const privKey = Uint8Array.from(Buffer.from(privateKey, 'hex'));
-        const authEvent: Event = finalizeEvent(unsignedAuthEvent, privKey);
+        // TO-DO
+        // Validate ADMIN KEY
 
         const response = await fetch('/api/ticket/checkin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ authEvent }),
+          body: JSON.stringify({ ticketId }),
         });
 
         if (!response.ok) {
@@ -182,31 +133,14 @@ export default function AdminPage() {
 
         const { data } = await response.json();
 
-        setOrders((prevOrders) =>
-          prevOrders.map((order) =>
-            order.ticketId === ticketId ? { ...order, checkIn: true } : order
-          )
-        );
+        alert(data?.alreadyCheckedIn);
 
-        if (data.alreadyCheckedIn) {
-          console.log('Ticket already checked');
-          setCheckInResult('alreadyCheckedIn');
-          // toast({
-          //   title: 'Error',
-          //   description: `Ticket already checked`,
-          //   variant: 'destructive',
-          //   duration: 5000,
-          // });
-        } else {
-          console.log('Ticket checked in');
+        if (!data?.alreadyCheckedIn) {
           setCheckInResult('checkedIn');
-          // toast({
-          //   title: 'Success',
-          //   description: `Ticket ${ticketId} checked in successfully`,
-          //   variant: 'default',
-          //   duration: 5000,
-          // });
+          mutate();
         }
+
+        setCheckInResult('alreadyCheckedIn');
       } catch (error: any) {
         console.error('Error:', error.message);
         toast({
@@ -215,6 +149,7 @@ export default function AdminPage() {
           variant: 'destructive',
           duration: 5000,
         });
+        return;
       }
     },
     [privateKey]
@@ -297,20 +232,13 @@ export default function AdminPage() {
   };
 
   const columns = React.useMemo(
-    () => createColumns(handleCheckIn, handleEmailTicket),
+    () => createColumns(handleCheckIn),
     [handleCheckIn]
-  );
-
-  const filteredOrders = orders.filter(
-    (order) =>
-      order.user.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.ticketId.includes(searchTerm)
   );
 
   if (!isAuthenticated) {
     return (
-      <Card className="w-full max-w-md mx-auto ">
+      <Card className="w-full max-w-md mx-auto px-4 py-6">
         <CardHeader>
           <CardTitle>Admin Login</CardTitle>
         </CardHeader>
@@ -322,9 +250,9 @@ export default function AdminPage() {
               onChange={(e) => setPrivateKey(e.target.value)}
               placeholder="Enter private key"
             />
-            <Button onClick={handleLogin} className="w-fit">
+            {/* <Button onClick={handleLogin} className="w-fit">
               Login
-            </Button>
+            </Button> */}
           </div>
           <div className="flex items-center space-x-2">
             <Button onClick={openScanner} className="w-full">
@@ -378,25 +306,22 @@ export default function AdminPage() {
   }
 
   return (
-    <>
+    <div className="w-full max-w-md mx-auto px-4 py-6">
       <Card>
         <CardHeader>
           <CardTitle>Tickets</CardTitle>
           <CardDescription>Manage and view ticket orders</CardDescription>
-          <div className="flex space-x-2">
-            <Input
+          <div className="flex space-x-2 mt-4">
+            {/* <Input
               placeholder="Search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            /> */}
             <Button
-              className="h-fit w-fit"
+              className="w-full"
+              size="lg"
               onClick={() => {
                 openScanner();
-                // toast({
-                //   description: 'Not implemented yet',
-                //   duration: 3000,
-                // });
               }}
             >
               <QrCode className="h-4 w-4 mr-2"></QrCode> Scan QR
@@ -428,17 +353,17 @@ export default function AdminPage() {
               </DialogContent>
             </Dialog>
           </div>
-          <Button className="h-fit w-full" onClick={fetchOrders}>
-            <RefreshCcw className="h-4 w-4 mr-2"></RefreshCcw>
-            Refresh
-          </Button>
         </CardHeader>
-        <CardContent>
-          <DataTable columns={columns} data={filteredOrders} />
-        </CardContent>
-        <CardFooter>
-          <p>Total Orders: {filteredOrders.length}</p>
-        </CardFooter>
+        {!isLoading && (
+          <CardContent>
+            <DataTable columns={columns} data={data?.data} />
+          </CardContent>
+        )}
+        {!isLoading && (
+          <CardFooter>
+            <p>Total Orders: {data?.data?.length}</p>
+          </CardFooter>
+        )}
       </Card>
       {/* Checked In */}
       <AlertDialog open={checkInResult === 'checkedIn'}>
@@ -474,6 +399,6 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

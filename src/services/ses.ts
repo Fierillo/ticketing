@@ -5,8 +5,6 @@ import {
 } from '@aws-sdk/client-sesv2';
 import { SESClientInterface } from '../types/ses';
 
-console.log(' ');
-
 class SESClient implements SESClientInterface {
   private client: SESv2Client;
 
@@ -20,14 +18,33 @@ class SESClient implements SESClientInterface {
     });
   }
 
-  async sendEmailOrder(email: string, orderId: string) {
+  async sendEmailOrder(
+    email: string,
+    orderId: string,
+    type: string = 'general',
+    serial?: number | undefined
+  ) {
+    console.log('sendEmailOrder', email, orderId);
+    const subjet = 'Tu entrada para el Bitcoin Pizza Day';
+    const date = 'Viernes 23 de Mayo';
+    const time = '19:00';
+    const block = serial ? Math.floor((serial - 1) / 21) : undefined;
+
+    const typeHtml = type
+      ? `<p style="text-align:center; color:gray;"><h2>Entrada: ${type}</h2></p>`
+      : '';
+    const serialHtml =
+      type === 'premium' && serial
+        ? `<p style="text-align:center; color:gray;"><h2>Sos el #${serial}.</h2><h2>Minado en Bloque ${block === 0 ? 'Genesis' : '#' + block}</h2></p>`
+        : '';
+
     const html: string = `
     <!DOCTYPE html>
     <html lang="es">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Tu entrada para la Panchitos Party</title>
+        <title>${subjet}</title>
         <style>
           body {
             font-family: Arial, sans-serif;
@@ -67,6 +84,10 @@ class SESClient implements SESClientInterface {
 
           h1 {
             color: #444444;
+            text-align: center;
+          }
+
+          h2 {
             text-align: center;
           }
 
@@ -113,10 +134,13 @@ class SESClient implements SESClientInterface {
       <body>
         <div class="container">
           <div class="logo-container">
-            <img src='https://raw.githubusercontent.com/lacrypta/branding/main/iso/isologo-white.png' alt='la-crypta-logo'>
+            <img src='http://lacrypta.ar/img/logos/isologo-white.png' alt='la-crypta-logo'>
           </div>
-          <h1>Tu entrada para la Panchitos Party</h1>
-          <p>Te esperamos en: <br>📍 Villanueva 1367, Belgrano, CABA. <br>📅 Viernes 17 de Enero<br>⏰ A partir de las 20:00 hs.</p>
+          <h1>${subjet}</h1>
+          ${typeHtml}
+          ${serialHtml}
+          <p>Te esperamos en: <br>📍 Villanueva 1367, Belgrano, CABA. <br>📅 ${date}<br>⏰ A partir de las ${time} hs.</p>
+          
           <div class="qr-code">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${orderId}" alt="QR Code">
           </div>
@@ -142,7 +166,7 @@ class SESClient implements SESClientInterface {
       Content: {
         Simple: {
           Subject: {
-            Data: 'Tu entrada para la Panchitos Party',
+            Data: subjet,
           },
           Body: {
             Html: {
@@ -157,7 +181,7 @@ class SESClient implements SESClientInterface {
 
     return await this.client.send(command);
   }
- 
+
   async sendEmailNewsletter(email: string) {
     const html: string = `
     <!DOCTYPE html>

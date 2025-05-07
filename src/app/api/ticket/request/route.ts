@@ -1,55 +1,68 @@
-import { NextRequest, NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
+import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
+import { z } from 'zod';
 
-import { AppError } from "@/lib/errors/appError";
-import { requestOrderSchema } from "@/lib/validation/requestOrderSchema";
-import { getCodeDiscountBack } from "@/lib/utils/codes";
-import { createOrder } from "@/lib/utils/prisma";
-import {
-  generateZapRequest,
-  setupPaymentListener,
-  senderPublicKey,
-} from "@/lib/utils/nostr";
-import { sendy } from "@/services/sendy";
-import { ses } from "@/services/ses";
-import { getLnurlpFromWalias, generateInvoice } from "@/services/ln";
-import { prisma } from "@/services/prismaClient";
+import { sendy } from '@/services/sendy';
+import { ses } from '@/services/ses';
+import { getLnurlpFromWalias, generateInvoice } from '@/services/ln';
+import { prisma } from '@/services/prismaClient';
 
-let apiUrl = process.env.NEXT_PUBLIC_API_URL
-let walias = process.env.NEXT_POS_WALIAS
-let priceEnv = process.env.NEXT_TICKET_PRICE
-let listId = process.env.NEXT_SENDY_LIST_ID
+import { calculateCurrencyToSats } from '@/lib/utils/price';
+import { AppError } from '@/lib/errors/appError';
+import { getCodeDiscountFront } from '@/lib/utils/codes';
+import { countTotalTickets, createOrder } from '@/lib/utils/prisma';
+import { generateZapRequest, senderPublicKey } from '@/lib/utils/nostr';
+
+import { TICKET } from '@/config/mock';
+
+let walias = process.env.NEXT_POS_WALIAS!;
+let listId = process.env.NEXT_SENDY_LIST_ID;
+
+const requestOrderSchema = z.object({
+  fullname: z.string().min(3, { message: 'Fullname is required' }),
+  email: z.string().email({ message: 'Invalid email address' }),
+  ticketQuantity: z
+    .number()
+    .int()
+    .lt(10)
+    .positive({ message: 'Ticket Quantity must be a number' }),
+  newsletter: z.boolean({ message: 'Newsletter must be a boolean' }),
+  code: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Method & env-vars check
-    if (req.method !== "POST") throw new AppError("Method not allowed", 405);
-    if (!apiUrl || !walias || !priceEnv) {
-      const missing = !apiUrl
-        ? "NEXT_PUBLIC_API_URL"
-        : !walias
-        ? "NEXT_POS_WALIAS"
-        : "NEXT_TICKET_PRICE";
-      throw new AppError(`${missing} is not defined`, 500);
-    }
+    if (req.method !== 'POST') throw new AppError('Method not allowed', 405);
 
     // 2. Validate request body
     const body = await req.json();
     const parsed = requestOrderSchema.safeParse(body);
-    if (!parsed.success) throw new AppError(parsed.error.errors[0].message, 400);
+    if (!parsed.success)
+      throw new AppError(parsed.error.errors[0].message, 400);
     const { fullname, email, ticketQuantity, newsletter, code } = parsed.data;
 
     // 3. Fetch discount & LNURLP concurrently
     const [discount, lnurlp] = await Promise.all([
-      code ? getCodeDiscountBack(code.toLowerCase()) : Promise.resolve(1),
+      code ? getCodeDiscountFront(code.toUpperCase()) : Promise.resolve(1),
       getLnurlpFromWalias(walias),
     ]);
-    if (!lnurlp?.callback) throw new AppError("Invalid LNURLP data", 500);
+    if (!lnurlp?.callback) throw new AppError('Invalid LNURLP data', 500);
 
-    // 4. Calculate total msats
-    const unitPrice = Number(priceEnv);
-    if (isNaN(unitPrice)) throw new AppError("Invalid ticket price", 500);
-    const totalMsats = Math.floor(unitPrice * discount) * ticketQuantity * 1000;
+    // Consultar la cantidad total de tickets
+    const totalTickets = await countTotalTickets(TICKET.type);
+
+    const unitPrice = Number(TICKET?.value);
+    const blockValue =
+      TICKET?.type === 'general' ? 0 : Math.floor(totalTickets / 21);
+    const total = Math.round(
+      (unitPrice + Number(blockValue * 10)) * ticketQuantity * discount
+    );
+
+    if (isNaN(unitPrice)) throw new AppError('Invalid ticket price', 500);
+
+    const priceInSats = await calculateCurrencyToSats(TICKET?.currency, total);
+    const totalMsats = priceInSats * 1000;
 
     // 5. Create order & (optional) subscribe to newsletter in parallel
     const [orderResp] = await Promise.all([
@@ -61,8 +74,8 @@ export async function POST(req: NextRequest) {
           email,
           listId: listId!,
         });
-        if (resp.success || resp.message === "Already subscribed") {
-          if (resp.message !== "Already subscribed") {
+        if (resp.success || resp.message === 'Already subscribed') {
+          if (resp.message !== 'Already subscribed') {
             await ses.sendEmailNewsletter(email);
           }
         } else {
@@ -70,6 +83,7 @@ export async function POST(req: NextRequest) {
         }
       })(),
     ]);
+
     const eventReferenceId = orderResp.eventReferenceId;
 
     // 6. Generate zap request
@@ -93,7 +107,6 @@ export async function POST(req: NextRequest) {
         });
         return { pr, verify };
       })(),
-      setupPaymentListener(eventReferenceId, fullname, email, apiUrl),
     ]);
 
     // 8. Return response
@@ -107,10 +120,10 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("Error in /api/ticket/request:", error);
+    console.error('Error in /api/ticket/request:', error);
     Sentry.captureException(error);
     const status = error instanceof AppError ? error.statusCode : 500;
-    const message = error.message || "Internal Server Error";
+    const message = error.message || 'Internal Server Error';
     return NextResponse.json({ status: false, errors: message }, { status });
   }
 }
