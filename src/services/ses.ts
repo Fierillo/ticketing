@@ -134,7 +134,7 @@ class SESClient implements SESClientInterface {
       <body>
         <div class="container">
           <div class="logo-container">
-            <img src='https://raw.githubusercontent.com/lacrypta/branding/main/iso/isologo-white.png' alt='la-crypta-logo'>
+            <img src='http://lacrypta.ar/img/logos/isologo-white.png' alt='la-crypta-logo'>
           </div>
           <h1>${subjet}</h1>
           ${typeHtml}
