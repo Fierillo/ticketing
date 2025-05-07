@@ -14,16 +14,36 @@ export async function GET(req: NextRequest) {
 
     const totalTickets = await countTotalTickets(TICKET.type);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       status: true,
       data: { totalTickets },
     });
+
+    // Prevent caching
+    response.headers.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate'
+    );
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
   } catch (error: any) {
     Sentry.captureException(error);
 
-    return NextResponse.json({
+    const errorResponse = NextResponse.json({
       status: false,
       errors: error.message || 'Failed to count tickets',
     });
+
+    // Prevent caching for error responses too
+    errorResponse.headers.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate'
+    );
+    errorResponse.headers.set('Pragma', 'no-cache');
+    errorResponse.headers.set('Expires', '0');
+
+    return errorResponse;
   }
 }
