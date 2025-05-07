@@ -13,12 +13,15 @@ export async function GET(req: NextRequest) {
       throw new AppError('Method not allowed', 405);
     }
 
+    const { searchParams } = new URL(req.url);
+    const rnd = searchParams.get('rnd');
+
     const totalTickets = await countTotalTickets(TICKET.type);
     console.info(`Counted ${totalTickets} tickets`);
 
     const response = NextResponse.json({
       status: true,
-      data: { totalTickets, random: Math.random() },
+      data: { totalTickets, algo: rnd || Math.random() },
     });
 
     // Prevent caching
