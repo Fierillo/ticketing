@@ -5,6 +5,7 @@ interface BlockBarProps {
   totalSquares: number; // cantidad total de cuadrados
   filled: number; // cuántos deben pintarse como “completados”
   gapPx?: number; // separación entre cuadrados en píxeles (por defecto 4)
+  totalTickets: number;
 }
 
 export function BlockBar({ totalSquares, filled, gapPx = 8 }: BlockBarProps) {

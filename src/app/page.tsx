@@ -52,12 +52,15 @@ import { convertEvent } from '../lib/utils/nostr';
 import { EVENT, TICKET } from '@/config/mock';
 import { BlockBar } from '@/components/ui/block-bar';
 import { useTicketCount } from '@/hooks/use-ticket-count';
+import { convertCurrencyToSats } from '@/lib/utils/price';
 
 const BLOCK_INTERVAL = 21;
 
 export default function Page() {
+  // Price
+  const [ticketFIATPrice, setTicketFIATPrice] = useState<number | null>(null)
   // Block Price
-  const [blockBatch, setBlockBatch] = useState<number | null>(null);
+  const [blockBatch, setBlockBatch] = useState<number>(0);
   // Flow
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -222,16 +225,22 @@ export default function Page() {
     };
   }, [validateRelaysStatus]);
 
-  const total = useMemo(() => {
-    if (blockBatch === null) return 21000000000;
+  // Update ticket price calculations
+  const totalPrice = useMemo(async () => {
+    try {
+      // 1) (Base price + Block increase) * Discount
+      const data = (TICKET.value + (TICKET.type === 'general' ? 0 : blockBatch) * 10) * discountMultiple
+      setTicketFIATPrice(data)
 
-    const blockValue = TICKET?.type === 'general' ? 0 : blockBatch;
-    const unitPrice = Number(TICKET?.value);
+      // 2) Turn FIAT → SATs
+      const satsData = await convertCurrencyToSats(data, TICKET.currency)
 
-    return Math.round(
-      (unitPrice + Number(blockValue * 10)) * ticketQuantity * discountMultiple
-    );
-  }, [discountMultiple, blockBatch, ticketQuantity, totalTickets]);
+      // 3) Calculate total sats
+      return satsData * ticketQuantity
+    } catch (err: any) {
+      console.error('Error calculando precios:', err)
+    }
+  },[ticketQuantity, blockBatch, discountMultiple]);
 
   return (
     <>
@@ -274,12 +283,7 @@ export default function Page() {
                           <p>{TICKET?.title}</p>
 
                           <p className="font-semibold text-lg">
-                            {blockBatch === null
-                              ? 'Cargando...'
-                              : TICKET?.value +
-                                blockBatch * 10 +
-                                ' ' +
-                                TICKET?.currency}
+                            {ticketFIATPrice}{' '}{TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
@@ -337,8 +341,7 @@ export default function Page() {
                           <p className="text-text font-bold">Total</p>
                           <div className="text-right">
                             <p className="font-bold text-lg">
-                              {total}
-                              {TICKET.currency}
+                              {totalPrice}{' SAT'}
                             </p>
                             {discountMultiple !== 1 && (
                               <p className="font-semibold text-sm text-primary">
@@ -372,7 +375,7 @@ export default function Page() {
                           <div>
                             <h2 className="text-md">{TICKET.title}</h2>
                             <p className="font-semibold text-lg">
-                              {total} {TICKET?.currency}
+                              {ticketFIATPrice}{' '}{TICKET?.currency}
                             </p>
                           </div>
                           <div className="flex gap-2 items-center">
@@ -390,7 +393,7 @@ export default function Page() {
                           <p className="text-text text-md">Total</p>
                           <div className="flex flex-col text-right">
                             <p className="font-bold text-md">
-                              {totalPrice}{' '}{TICKET.currency}
+                              {totalPrice}{' SAT'}
                             </p>
                             {discountMultiple !== 1 && (
                               <p className="font-semibold text-sm text-primary">
@@ -411,10 +414,7 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {blockBatch === null
-                            ? 'Cargando...'
-                            : TICKET?.value + blockBatch * 10}{' '}
-                          {TICKET?.currency}
+                          {ticketFIATPrice}{' '}{TICKET?.currency}
                         </p>
                         <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
                           <span className="font-normal text-text">x</span>
@@ -428,7 +428,7 @@ export default function Page() {
                       <p className="text-text font-bold">Total</p>
                       <div className="text-right">
                         <p className="font-bold text-lg">
-                          {total} {TICKET.currency}
+                          {totalPrice}{' SAT'}
                         </p>
                         {discountMultiple !== 1 && (
                           <p className="font-semibold text-sm text-primary">
