@@ -4,17 +4,21 @@ import React from 'react';
 interface BlockBarProps {
   totalSquares: number; // cantidad total de cuadrados
   filled: number; // cuántos deben pintarse como “completados”
-  gapPx?: number; // separación entre cuadrados en píxeles (por defecto 4)
+  totalTickets?: number; // total de tickets
 }
 
-export function BlockBar({ totalSquares, filled, gapPx = 8 }: BlockBarProps) {
+export function BlockBar({
+  totalSquares,
+  filled,
+  totalTickets = 0,
+}: BlockBarProps) {
   // genera un array [0…totalSquares-1]
   const squares = Array.from({ length: totalSquares }, (_, i) => i);
 
   return (
     <div
       className="flex flex-col justify-between items-center w-full mt-2"
-      style={{ gap: gapPx }}
+      style={{ gap: '8px' }}
     >
       <div className="flex gap-2 w-full">
         {squares.map((idx) => (
