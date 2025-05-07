@@ -32,6 +32,11 @@ export async function GET(req: NextRequest) {
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
 
+    // Allow CORS
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET');
+    response.headers.set('Access-Control-Allow-Headers', '*');
+
     return response;
   } catch (error: any) {
     Sentry.captureException(error);
@@ -49,6 +54,25 @@ export async function GET(req: NextRequest) {
     errorResponse.headers.set('Pragma', 'no-cache');
     errorResponse.headers.set('Expires', '0');
 
+    // Allow CORS for error responses too
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET');
+    errorResponse.headers.set('Access-Control-Allow-Headers', '*');
+
     return errorResponse;
   }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  const response = new NextResponse(null, {
+    status: 204,
+  });
+
+  // Allow CORS
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', '*');
+  response.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
+
+  return response;
 }
