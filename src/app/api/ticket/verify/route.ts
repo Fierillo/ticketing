@@ -95,8 +95,7 @@ export async function POST(request: Request) {
             ticket.ticketId!,
             ticket.type,
             ticket.serial
-          ); // TODO: send one email with all tickets
-          console.log('Payment via NIP-57 confirmed');
+          );
         }
       } catch (error: any) {
         return NextResponse.json(
