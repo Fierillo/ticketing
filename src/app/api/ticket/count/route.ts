@@ -7,16 +7,18 @@ import * as Sentry from '@sentry/nextjs';
 import { TICKET } from '@/config/mock';
 
 export async function GET(req: NextRequest) {
+  console.info('Counting tickets...');
   try {
     if (req.method !== 'GET') {
       throw new AppError('Method not allowed', 405);
     }
 
     const totalTickets = await countTotalTickets(TICKET.type);
+    console.info(`Counted ${totalTickets} tickets`);
 
     const response = NextResponse.json({
       status: true,
-      data: { totalTickets },
+      data: { totalTickets, random: Math.random() },
     });
 
     // Prevent caching
