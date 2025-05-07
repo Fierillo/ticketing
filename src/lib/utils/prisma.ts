@@ -133,15 +133,14 @@ async function updatePaidOrder21(
     let tickets: Ticket[] = [];
 
     // Get the current greatest serial number
-    const lastTicket = await tx.ticket.findFirst({
-      where: {
-        type: type,
-      },
-      orderBy: {
-        serial: 'desc',
-      },
-    });
-    let currentSerial = lastTicket ? lastTicket.serial : 0;
+    const lastSerialResult = await tx.$queryRawUnsafe<{ serial: number }[]>(
+      `SELECT serial FROM "Ticket" WHERE type = $1 ORDER BY serial DESC LIMIT 1 FOR UPDATE`,
+      type
+    );
+
+    let currentSerial = lastSerialResult.length
+      ? lastSerialResult[0].serial
+      : 0;
 
     for (let i = 0; i < existingOrder.ticketQuantity; i++) {
       const ticketId: string = randomBytes(16).toString('hex');
@@ -304,16 +303,11 @@ async function createInvite(
 
 // Function to count total tickets in the database
 async function countTotalTickets(type: string): Promise<number> {
-  const lastTicket = await prisma.ticket.findFirst({
+  return await prisma.ticket.count({
     where: {
       type: type,
     },
-    orderBy: {
-      serial: 'desc',
-    },
   });
-
-  return lastTicket ? lastTicket.serial : 0;
 }
 
 // Function to get ticket in the database by id
