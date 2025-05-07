@@ -52,6 +52,9 @@ model Ticket {
 
     User  User   @relation(fields: [userId], references: [id])
     Order Order? @relation(fields: [orderId], references: [id])
+
+    @@index([serial])
+    @@index([serial, type])
 }
 
 model Code {

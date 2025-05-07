@@ -327,6 +327,7 @@ export default function Page() {
                         <BlockBar
                           totalSquares={5}
                           filled={Math.floor(Number(totalTickets || 0) / 21)}
+                          totalTickets={(totalTickets || 0) + 1}
                         />
                       )}
                     </Card>
