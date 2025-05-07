@@ -3,6 +3,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig = {
   env: {
+    NEXT_PUBLIC_API_URL: process.env.PUBLIC_API_URL,
     NEXT_SIGNER_PRIVATE_KEY: process.env.SIGNER_PRIVATE_KEY,
     NEXT_ADMIN_PUBLIC_KEY: process.env.ADMIN_PUBLIC_KEY,
     NEXT_POS_WALIAS: process.env.POS_WALIAS,

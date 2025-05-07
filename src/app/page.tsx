@@ -59,9 +59,10 @@ const BLOCK_INTERVAL = 21;
 export default function Page() {
   // Price
   const [ticketFIATPrice, setTicketFIATPrice] = useState<number | null>(null)
+  const [totalPrice, setTotalPrice] = useState<number | null>(null)
   // Block Price
-  const [blockBatch, setBlockBatch] = useState<number>(0);
-  // Flow
+  const [blockBatch, setBlockBatch] = useState<number | null>(null);
+  
   const [screen, setScreen] = useState<string>('information');
   const [isLoading, setIsloading] = useState<boolean>(false);
   // Dialog for reset invoice
@@ -226,21 +227,24 @@ export default function Page() {
   }, [validateRelaysStatus]);
 
   // Update ticket price calculations
-  const totalPrice = useMemo(async () => {
-    try {
-      // 1) (Base price + Block increase) * Discount
-      const data = (TICKET.value + (TICKET.type === 'general' ? 0 : blockBatch) * 10) * discountMultiple
-      setTicketFIATPrice(data)
+  useEffect(() => {
+    const calculatePrices = async () => {
+      try {
+        // 1) (Base price + Block increase) * Discount
+        const data = (TICKET.value + (TICKET.type === 'general' ? 0 : blockBatch ?? 0) * 10) * discountMultiple
+        setTicketFIATPrice(data)
 
-      // 2) Turn FIAT → SATs
-      const satsData = await convertCurrencyToSats(data, TICKET.currency)
+        // 2) Turn FIAT → SATs
+        const satsData = await convertCurrencyToSats(data, TICKET.currency)
 
-      // 3) Calculate total sats
-      return satsData * ticketQuantity
-    } catch (err: any) {
-      console.error('Error calculando precios:', err)
+        // 3) Calculate total sats
+        setTotalPrice(satsData * ticketQuantity)
+      } catch (err: any) {
+        console.error('Error calculando precios:', err)
+      }
     }
-  },[ticketQuantity, blockBatch, discountMultiple]);
+    calculatePrices()
+  }, [ticketQuantity, discountMultiple, blockBatch])
 
   return (
     <>
