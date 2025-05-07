@@ -29,7 +29,7 @@ export const TicketCountProvider = ({
 
       const totalTickets = await fetch('/api/ticket/count').then(
         async (res) => {
-          return (await res.json()).data.totalTickets;
+          return (await res.json()).data?.totalTickets || 0;
         }
       );
 
