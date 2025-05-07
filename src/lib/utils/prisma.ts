@@ -307,7 +307,7 @@ async function countTotalTickets(type: string): Promise<number> {
     SELECT serial FROM "Ticket" WHERE type = ${type} ORDER BY serial DESC LIMIT 1 FOR UPDATE
   `;
 
-  return Number(result[0].serial);
+  return Number(result[0]?.serial || 0);
 }
 
 // Function to get ticket in the database by id
