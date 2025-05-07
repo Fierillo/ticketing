@@ -15,7 +15,6 @@ import { generateZapRequest, senderPublicKey } from '@/lib/utils/nostr';
 
 import { TICKET } from '@/config/mock';
 
-let apiUrl = process.env.NEXT_PUBLIC_API_URL;
 let walias = process.env.NEXT_POS_WALIAS;
 let listId = process.env.NEXT_SENDY_LIST_ID;
 
@@ -35,10 +34,6 @@ export async function POST(req: NextRequest) {
   try {
     // 1. Method & env-vars check
     if (req.method !== 'POST') throw new AppError('Method not allowed', 405);
-    if (!apiUrl || !walias) {
-      const missing = !apiUrl ? 'NEXT_PUBLIC_API_URL' : 'NEXT_POS_WALIAS';
-      throw new AppError(`${missing} is not defined`, 500);
-    }
 
     // 2. Validate request body
     const body = await req.json();
