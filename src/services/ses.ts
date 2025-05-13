@@ -36,7 +36,7 @@ class SESClient implements SESClientInterface {
     const serialHtml =
       type === 'premium' && serial
         ? `<p style="text-align:center; color:gray;"><h2>Sos el #${serial}.</h2><h2>Minado en Bloque ${block === 0 ? 'Genesis' : '#' + block}</h2></p>`
-        : '';
+        : `<p style="text-align:center; color:gray;"><h2>Sos el #${serial}.</h2></p>`;
 
     const html: string = `
     <!DOCTYPE html>
