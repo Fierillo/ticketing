@@ -276,10 +276,7 @@ export default function Page() {
                           <p className="font-semibold text-lg">
                             {blockBatch === null
                               ? 'Cargando...'
-                              : TICKET?.value +
-                                blockBatch * 10 +
-                                ' ' +
-                                TICKET?.currency}
+                              : TICKET?.value + ' ' + TICKET?.currency}
                           </p>
                         </div>
                         {TICKET?.type === 'general' && (
