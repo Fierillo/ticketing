@@ -74,12 +74,8 @@ export async function POST(req: NextRequest) {
           email,
           listId: listId!,
         });
-        if (resp.success || resp.message === 'Already subscribed') {
-          if (resp.message !== 'Already subscribed') {
-            await ses.sendEmailNewsletter(email);
-          }
-        } else {
-          throw new AppError(`Newsletter error: ${resp.message}`, 400);
+        if (resp.success && resp.message !== 'Already subscribed') {
+          await ses.sendEmailNewsletter(email);
         }
       })(),
     ]);
