@@ -43,15 +43,6 @@ export const createColumns = (
     ),
   },
   {
-    accessorKey: 'ticketId',
-    header: 'ID',
-    cell: ({ row }) => (
-      <div>
-        {row.original.ticketId.slice(0, 4)}...{row.original.ticketId.slice(-4)}
-      </div>
-    ),
-  },
-  {
     accessorKey: 'user',
     header: ({ column }) => {
       return (
@@ -97,11 +88,11 @@ export const createColumns = (
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
+            {/* <DropdownMenuItem
               onClick={() => navigator.clipboard.writeText(order.ticketId)}
             >
               Copy ticket ID
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuItem
               onClick={() => handleCheckIn(order.ticketId)}
               disabled={order.checkIn}
