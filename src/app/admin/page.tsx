@@ -1,9 +1,16 @@
 'use client';
 
+import { useCallback, useState, useMemo } from 'react';
+import { Ban, CircleCheck, QrCode } from 'lucide-react';
+import NimiqQrScanner from 'qr-scanner';
 import useSWR from 'swr';
+import { getPublicKey } from 'nostr-tools';
+import { AlertDialog } from '@radix-ui/react-alert-dialog';
+
+import { toast } from '@/hooks/use-toast';
 
 import QrScanner from '@/components/scanner/Scanner';
-import { createColumns, TicketInfo } from '@/components/table/columns';
+import { createColumns } from '@/components/table/columns';
 import { DataTable } from '@/components/table/data-table';
 import {
   AlertDialogAction,
@@ -17,7 +24,6 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -30,25 +36,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/hooks/use-toast';
-import { AlertDialog } from '@radix-ui/react-alert-dialog';
-import {
-  Ban,
-  Blocks,
-  CircleCheck,
-  QrCode,
-  QrCodeIcon,
-  RefreshCcw,
-} from 'lucide-react';
-import { Event, EventTemplate, finalizeEvent, getPublicKey } from 'nostr-tools';
-import NimiqQrScanner from 'qr-scanner';
-import * as React from 'react';
-import { useCallback, useState } from 'react';
+
 import fetcher from '@/config/fetcher';
 
 export default function AdminPage() {
   // Authentication
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [privateKey, setPrivateKey] = useState('');
   // Table
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,65 +52,76 @@ export default function AdminPage() {
   >('idle');
 
   // SWR
-  const { data, isLoading, mutate } = useSWR('/api/ticket/all', fetcher);
+  const { data, isLoading, mutate } = useSWR(
+    isAuthenticated && '/api/ticket/all',
+    fetcher,
+    {
+      refreshInterval: 200,
+    }
+  );
 
-  // const handleLogin = async () => {
-  //   try {
-  //     if (!privateKey) {
-  //       toast({
-  //         title: 'Error',
-  //         description: 'Private key is required',
-  //         variant: 'destructive',
-  //         duration: 3000,
-  //       });
-  //       return;
-  //     }
+  const handleLogin = async () => {
+    if (!privateKey) {
+      toast({
+        title: 'Error',
+        description: 'Private key is required',
+        variant: 'destructive',
+        duration: 3000,
+      });
+      return;
+    }
 
-  //     let publicKey;
-  //     try {
-  //       const privKey = Uint8Array.from(Buffer.from(privateKey, 'hex'));
-  //       publicKey = getPublicKey(privKey);
-  //     } catch (error: any) {
-  //       throw new Error('Invalid private key');
-  //     }
+    let publicKey;
 
-  //     const response = await fetch('/api/admin/login', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({ publicKey }),
-  //     });
+    const privKey = Uint8Array.from(Buffer.from(privateKey, 'hex'));
 
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       throw new Error(`${errorData.errors || response.statusText}`);
-  //     }
+    if (!privKey) {
+      toast({
+        title: 'Error',
+        description: 'Invalid private key',
+        variant: 'destructive',
+        duration: 3000,
+      });
 
-  //     setIsAuthenticated(true);
-  //     toast({
-  //       title: 'Success',
-  //       description: 'Logged in successfully',
-  //       variant: 'default',
-  //       duration: 3000,
-  //     });
-  //     fetchOrders();
-  //   } catch (error: any) {
-  //     toast({
-  //       title: 'Error',
-  //       description: error.message,
-  //       variant: 'destructive',
-  //       duration: 3000,
-  //     });
-  //   }
-  // };
+      return;
+    }
+
+    publicKey = getPublicKey(privKey);
+
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ publicKey }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`${errorData.errors || response.statusText}`);
+      }
+
+      setIsAuthenticated(true);
+      toast({
+        title: 'Success',
+        description: 'Logged in successfully',
+        variant: 'default',
+        duration: 3000,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+        duration: 3000,
+      });
+    }
+  };
 
   const handleCheckIn = useCallback(
     async (ticketId: string) => {
       try {
-        // TO-DO
-        // Validate ADMIN KEY
-
         const response = await fetch('/api/ticket/checkin', {
           method: 'POST',
           headers: {
@@ -132,15 +136,14 @@ export default function AdminPage() {
         }
 
         const { data } = await response.json();
+        mutate();
 
-        alert(data?.alreadyCheckedIn);
-
-        if (!data?.alreadyCheckedIn) {
-          setCheckInResult('checkedIn');
-          mutate();
+        if (data?.alreadyCheckedIn) {
+          setCheckInResult('alreadyCheckedIn');
+          return;
         }
 
-        setCheckInResult('alreadyCheckedIn');
+        setCheckInResult('checkedIn');
       } catch (error: any) {
         console.error('Error:', error.message);
         toast({
@@ -150,53 +153,6 @@ export default function AdminPage() {
           duration: 5000,
         });
         return;
-      }
-    },
-    [privateKey]
-  );
-
-  const handleEmailTicket = useCallback(
-    async (ticketId: string) => {
-      console.log('Email ticket', ticketId);
-
-      try {
-        const unsignedAuthEvent: EventTemplate = {
-          kind: 27241,
-          tags: [] as string[][],
-          content: JSON.stringify({ ticket_id: ticketId }),
-          created_at: Math.round(Date.now() / 1000),
-        };
-
-        const privKey = Uint8Array.from(Buffer.from(privateKey, 'hex'));
-        const authEvent: Event = finalizeEvent(unsignedAuthEvent, privKey);
-
-        const response = await fetch('/api/ticket/email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ authEvent }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || response.statusText);
-        }
-
-        toast({
-          title: 'Success',
-          description: `Ticket ${ticketId} emailed successfully`,
-          variant: 'default',
-          duration: 5000,
-        });
-      } catch (error: any) {
-        console.error('Error:', error.message);
-        toast({
-          title: 'Error',
-          description: `Failed to check in ticket ${ticketId}`,
-          variant: 'destructive',
-          duration: 5000,
-        });
       }
     },
     [privateKey]
@@ -223,22 +179,17 @@ export default function AdminPage() {
     closeScanner();
   };
 
-  const handleScanLogin = (result: NimiqQrScanner.ScanResult) => {
-    if (!result || !result.data) return;
+  const columns = useMemo(() => createColumns(handleCheckIn), [handleCheckIn]);
 
-    setPrivateKey(result.data.trim());
-
-    closeScanner();
-  };
-
-  const columns = React.useMemo(
-    () => createColumns(handleCheckIn),
-    [handleCheckIn]
+  const filteredOrders = data?.data.filter(
+    (order: any) =>
+      order.User.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.User.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (!isAuthenticated) {
     return (
-      <Card className="w-full max-w-md mx-auto px-4 py-6">
+      <Card className="w-full max-w-md mx-auto mt-12">
         <CardHeader>
           <CardTitle>Admin Login</CardTitle>
         </CardHeader>
@@ -250,55 +201,9 @@ export default function AdminPage() {
               onChange={(e) => setPrivateKey(e.target.value)}
               placeholder="Enter private key"
             />
-            {/* <Button onClick={handleLogin} className="w-fit">
+            <Button onClick={handleLogin} className="w-fit">
               Login
-            </Button> */}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button onClick={openScanner} className="w-full">
-              <QrCodeIcon className="h-4 w-4 mr-2"></QrCodeIcon>
-              Scan QR Code
             </Button>
-            <Dialog open={isOpenScanner} onOpenChange={closeScanner}>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Scan QR Code</DialogTitle>
-                  <DialogDescription>
-                    Position the QR code within the camera view to scan.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="mt-4">
-                  <QrScanner
-                    className="w-full h-64 bg-black"
-                    onDecode={handleScanLogin}
-                    startOnLaunch={true}
-                    highlightScanRegion={true}
-                    highlightCodeOutline={true}
-                    constraints={{
-                      facingMode: 'environment',
-                    }}
-                    preferredCamera={'environment'}
-                  />
-                </div>
-                <Button onClick={closeScanner} className="mt-4">
-                  Cancel
-                </Button>
-              </DialogContent>
-            </Dialog>
-            {typeof window !== 'undefined' && window.webln && (
-              <Button
-                onClick={() => {
-                  toast({
-                    description: 'Not implemented yet',
-                    duration: 3000,
-                  });
-                }}
-                className="w-full"
-              >
-                <Blocks className="h-4 w-4 mr-2"></Blocks>
-                Login with Extension
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -306,65 +211,68 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 py-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Tickets</CardTitle>
-          <CardDescription>Manage and view ticket orders</CardDescription>
-          <div className="flex space-x-2 mt-4">
-            {/* <Input
-              placeholder="Search"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            /> */}
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => {
-                openScanner();
-              }}
-            >
-              <QrCode className="h-4 w-4 mr-2"></QrCode> Scan QR
+    <div className="flex flex-col gap-4 w-full max-w-md mx-auto px-4 py-6">
+      <div className="flex flex-col gap-0">
+        <h1 className="text-lg font-semibold">Tickets</h1>
+        <p>Manage and view ticket orders</p>
+      </div>
+
+      <div className="flex space-x-2">
+        <Input
+          className="h-11"
+          placeholder="Search"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Button
+          size="lg"
+          onClick={() => {
+            openScanner();
+          }}
+        >
+          <QrCode className="h-4 w-4 mr-2"></QrCode> Scan QR
+        </Button>
+        <Dialog open={isOpenScanner} onOpenChange={closeScanner}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Scan QR Code</DialogTitle>
+              <DialogDescription>
+                Position the QR code within the camera view to scan.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4">
+              <QrScanner
+                className="w-full h-64 bg-black"
+                onDecode={handleScanCheckIn}
+                startOnLaunch={true}
+                highlightScanRegion={true}
+                highlightCodeOutline={true}
+                constraints={{
+                  facingMode: 'environment',
+                }}
+                preferredCamera={'environment'}
+              />
+            </div>
+            <Button onClick={closeScanner} className="mt-4">
+              Cancel
             </Button>
-            <Dialog open={isOpenScanner} onOpenChange={closeScanner}>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Scan QR Code</DialogTitle>
-                  <DialogDescription>
-                    Position the QR code within the camera view to scan.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="mt-4">
-                  <QrScanner
-                    className="w-full h-64 bg-black"
-                    onDecode={handleScanCheckIn}
-                    startOnLaunch={true}
-                    highlightScanRegion={true}
-                    highlightCodeOutline={true}
-                    constraints={{
-                      facingMode: 'environment',
-                    }}
-                    preferredCamera={'environment'}
-                  />
-                </div>
-                <Button onClick={closeScanner} className="mt-4">
-                  Cancel
-                </Button>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        {!isLoading && (
-          <CardContent>
-            <DataTable columns={columns} data={data?.data} />
-          </CardContent>
-        )}
-        {!isLoading && (
-          <CardFooter>
-            <p>Total Orders: {data?.data?.length}</p>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {!isLoading && (
+        <Card>
+          <CardFooter className="p-4">
+            <div className="w-full flex justify-between">
+              <p className="text-sm">Total Orders</p>
+              <p className="font-semibold">{data?.data?.length}</p>
+            </div>
           </CardFooter>
-        )}
-      </Card>
+        </Card>
+      )}
+
+      {!isLoading && <DataTable columns={columns} data={filteredOrders} />}
+
       {/* Checked In */}
       <AlertDialog open={checkInResult === 'checkedIn'}>
         <AlertDialogContent>
