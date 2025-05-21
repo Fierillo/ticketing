@@ -411,9 +411,7 @@ export default function Page() {
                       <div>
                         <h2 className="text-md">{TICKET.title}</h2>
                         <p className="font-semibold text-lg">
-                          {blockBatch === null
-                            ? 'Cargando...'
-                            : TICKET?.value + blockBatch * 10}{' '}
+                          {blockBatch === null ? 'Cargando...' : TICKET?.value}{' '}
                           {TICKET?.currency}
                         </p>
                         <p className="flex items-center justify-center gap-1 w-[40px] font-semibold">
