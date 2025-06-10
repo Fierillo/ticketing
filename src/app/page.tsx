@@ -204,7 +204,7 @@ export default function Page() {
   }, [isPaid]);
 
   useEffect(() => {
-    console.log('super totalTickets', totalTickets);
+    //console.log('super totalTickets', totalTickets);
     totalTickets !== null && setBlockBatch(Math.floor(totalTickets / 21));
   }, [totalTickets]);
 
@@ -238,7 +238,7 @@ export default function Page() {
       <div className="flex flex-col md:flex-row w-full min-h-[100dvh]">
         {/* Aside info */}
         <aside
-          className={`bg-black bg-fit bg-[center_top_-420px] relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0`}
+          className={`bg-black bg-fit bg-[center_top_-150px] relative flex justify-center items-center w-full min-h-full pt-[60px] md:pt-0`}
           style={{
             backgroundImage: `url('/${EVENT?.imageUrl || ''}')`,
           }}
@@ -258,10 +258,15 @@ export default function Page() {
                       <h1 className="text-2xl font-semibold mb-4 leading-none tracking-tight">
                         {EVENT?.title}
                       </h1>
-                      <p>{EVENT?.description}</p>
+                      <h2>
+                        {EVENT?.description}
+                      </h2>
+                      <h2 className='mt-4'>
+                        {EVENT?.description2}
+                      </h2>
                     </div>
-                    <div className="flex flex-col">
-                      <p>Villanueva 1367, CABA</p>
+                    <div className="flex flex-col mt-4 italic">
+                      <p>{EVENT?.location}</p>
                       <p>{EVENT?.date}</p>
                     </div>
                   </Card>
@@ -330,8 +335,7 @@ export default function Page() {
                           <p className="text-text font-bold">Total</p>
                           <div className="text-right">
                             <p className="font-bold text-lg">
-                              {total}
-                              {TICKET.currency}
+                              {total}{' '}{TICKET.currency}
                             </p>
                             {discountMultiple !== 1 && (
                               <p className="font-semibold text-sm text-primary">
